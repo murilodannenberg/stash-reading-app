@@ -17,6 +17,9 @@ type Route = RouteProp<RootStackParamList, 'Reader'>;
 
 const FONT_SIZES = [14, 15, 16, 17, 18, 20, 22, 24];
 
+// Detecta tema escuro comparando com o background do tema escuro
+const DARK_BG = READING_THEMES.escuro.backgroundColor;
+
 export function ReaderScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation();
@@ -82,17 +85,21 @@ export function ReaderScreen() {
     return (
       <View style={styles.center}>
         <Ionicons name="alert-circle-outline" size={40} color={palette.gray300} />
-        <Text style={styles.errorText}>Artigo nao encontrado.</Text>
+        <Text style={styles.errorText}>Artigo não encontrado.</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backLink}>Voltar</Text>
+          <Text style={[styles.backLink, { color: palette.primary }]}>Voltar</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const htmlSource = article.content_html ? { html: article.content_html } : null;
-
+  const isDark = prefs.backgroundColor === DARK_BG;
   const fontFamilyValue = prefs.fontFamily === 'System' ? undefined : prefs.fontFamily;
+
+  // Determina o linkColor do tema ativo
+  const activeLinkColor = Object.values(READING_THEMES).find(
+    (t) => t.backgroundColor === prefs.backgroundColor
+  )?.linkColor ?? palette.primary;
 
   const tagsStyles = {
     body: {
@@ -101,7 +108,7 @@ export function ReaderScreen() {
       lineHeight: prefs.fontSize * prefs.lineHeight,
       fontFamily: fontFamilyValue,
     },
-    a: { color: palette.primary },
+    a: { color: activeLinkColor },
     img: { marginVertical: 12 },
     p: { marginBottom: 12 },
     h1: { fontSize: prefs.fontSize * 1.4, fontWeight: '700' as const, marginBottom: 8 },
@@ -109,14 +116,14 @@ export function ReaderScreen() {
     h3: { fontSize: prefs.fontSize * 1.1, fontWeight: '600' as const, marginBottom: 6 },
     blockquote: {
       borderLeftWidth: 3,
-      borderLeftColor: '#d1d5db',
+      borderLeftColor: isDark ? palette.gray600 : palette.gray200,
       paddingLeft: 14,
       marginLeft: 0,
       fontStyle: 'italic' as const,
-      color: '#6b7280',
+      color: isDark ? palette.gray400 : palette.gray500,
     },
     pre: {
-      backgroundColor: prefs.backgroundColor === '#ffffff' ? '#f3f4f6' : 'rgba(255,255,255,0.08)',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : palette.gray100,
       padding: 12,
       borderRadius: 8,
       overflow: 'hidden' as const,
@@ -124,12 +131,15 @@ export function ReaderScreen() {
     code: { fontSize: prefs.fontSize - 2 },
   };
 
-  const isDark = prefs.backgroundColor !== '#ffffff' && prefs.backgroundColor !== '#f5f0e8';
-
   return (
     <View style={[styles.container, { backgroundColor: prefs.backgroundColor }]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.title, { color: prefs.textColor, fontSize: prefs.fontSize * 1.5, fontFamily: fontFamilyValue }]}>
+        {/* Título em Georgia — design system §3 (display / corpo de leitura usa serif) */}
+        <Text style={[styles.title, {
+          color: prefs.textColor,
+          fontSize: prefs.fontSize * 1.5,
+          fontFamily: 'Georgia',
+        }]}>
           {article.title}
         </Text>
         {(article.author != null || article.reading_time_min != null) && (
@@ -146,12 +156,12 @@ export function ReaderScreen() {
             )}
           </View>
         )}
-        <View style={[styles.divider, { backgroundColor: prefs.textColor, opacity: 0.1 }]} />
+        <View style={[styles.divider, { backgroundColor: activeLinkColor, opacity: 0.25 }]} />
 
-        {htmlSource ? (
+        {article.content_html ? (
           <RenderHtml
             contentWidth={width - 40}
-            source={htmlSource}
+            source={{ html: article.content_html }}
             tagsStyles={tagsStyles}
             enableExperimentalMarginCollapsing
           />
@@ -166,9 +176,13 @@ export function ReaderScreen() {
           </Text>
         ) : (
           <View style={styles.emptyContent}>
-            <Ionicons name="document-text-outline" size={40} color={isDark ? 'rgba(255,255,255,0.3)' : palette.gray300} />
+            <Ionicons
+              name="document-text-outline"
+              size={40}
+              color={isDark ? 'rgba(255,255,255,0.25)' : palette.gray300}
+            />
             <Text style={[styles.emptyText, { color: prefs.textColor, opacity: 0.5 }]}>
-              Este artigo foi salvo sem conteudo.
+              Este artigo foi salvo sem conteúdo.
             </Text>
             {article.url != null && (
               <Text style={[styles.urlText, { color: palette.primary }]}>URL: {article.url}</Text>
@@ -177,13 +191,13 @@ export function ReaderScreen() {
         )}
       </ScrollView>
 
-      {/* Reading settings panel */}
+      {/* Painel de preferências de leitura */}
       <Modal visible={showSettings} transparent animationType="slide" onRequestClose={toggleSettings}>
         <TouchableOpacity style={settingsStyles.overlay} activeOpacity={1} onPress={toggleSettings}>
           <View style={settingsStyles.panel}>
             <View style={settingsStyles.handle} />
 
-            {/* Font size */}
+            {/* Tamanho da fonte */}
             <Text style={settingsStyles.heading}>Tamanho</Text>
             <View style={settingsStyles.sizeRow}>
               <TouchableOpacity
@@ -193,7 +207,7 @@ export function ReaderScreen() {
                   if (idx > 0) setFontSize(FONT_SIZES[idx - 1]);
                 }}
               >
-                <Ionicons name="remove" size={20} color={palette.gray600} />
+                <Ionicons name="remove" size={20} color={palette.gray500} />
               </TouchableOpacity>
               <Text style={settingsStyles.sizeValue}>{prefs.fontSize}px</Text>
               <TouchableOpacity
@@ -203,11 +217,11 @@ export function ReaderScreen() {
                   if (idx < FONT_SIZES.length - 1) setFontSize(FONT_SIZES[idx + 1]);
                 }}
               >
-                <Ionicons name="add" size={20} color={palette.gray600} />
+                <Ionicons name="add" size={20} color={palette.gray500} />
               </TouchableOpacity>
             </View>
 
-            {/* Font family */}
+            {/* Família de fonte */}
             <Text style={settingsStyles.heading}>Fonte</Text>
             <View style={settingsStyles.row}>
               {(Object.keys(FONT_FAMILIES) as FontFamilyKey[]).map((key) => {
@@ -215,34 +229,43 @@ export function ReaderScreen() {
                 return (
                   <TouchableOpacity
                     key={key}
-                    style={[settingsStyles.fontBtn, isActive && settingsStyles.fontBtnActive]}
+                    style={[
+                      settingsStyles.fontBtn,
+                      isActive && { borderColor: accent, backgroundColor: accent + '12' },
+                    ]}
                     onPress={() => setFontFamily(key)}
                   >
                     <Text style={[
                       settingsStyles.fontBtnText,
                       { fontFamily: key === 'System' ? undefined : key },
-                      isActive && settingsStyles.fontBtnTextActive,
+                      isActive && { color: accent, fontWeight: '600' },
                     ]}>
-                      {key === 'System' ? 'Padrao' : key}
+                      {key}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            {/* Line height */}
-            <Text style={settingsStyles.heading}>Espacamento</Text>
+            {/* Espaçamento entre linhas */}
+            <Text style={settingsStyles.heading}>Espaçamento</Text>
             <View style={settingsStyles.row}>
               {[1.4, 1.6, 1.8, 2.0].map((lh) => {
                 const isActive = Math.abs(prefs.lineHeight - lh) < 0.05;
                 return (
                   <TouchableOpacity
                     key={lh}
-                    style={[settingsStyles.lhBtn, isActive && settingsStyles.lhBtnActive]}
+                    style={[
+                      settingsStyles.lhBtn,
+                      isActive && { borderColor: accent, backgroundColor: accent + '12' },
+                    ]}
                     onPress={() => setLineHeight(lh)}
                   >
-                    <Ionicons name="reorder-three-outline" size={18} color={isActive ? palette.primary : palette.gray400} />
-                    <Text style={[settingsStyles.lhText, isActive && settingsStyles.lhTextActive]}>
+                    <Ionicons name="reorder-three-outline" size={18} color={isActive ? accent : palette.gray400} />
+                    <Text style={[
+                      settingsStyles.lhText,
+                      isActive && { color: accent, fontWeight: '600' },
+                    ]}>
                       {lh.toFixed(1)}
                     </Text>
                   </TouchableOpacity>
@@ -250,7 +273,7 @@ export function ReaderScreen() {
               })}
             </View>
 
-            {/* Theme */}
+            {/* Tema de leitura */}
             <Text style={settingsStyles.heading}>Tema</Text>
             <View style={settingsStyles.row}>
               {(Object.keys(READING_THEMES) as ReadingThemeKey[]).map((key) => {
@@ -261,10 +284,10 @@ export function ReaderScreen() {
                     key={key}
                     style={[
                       settingsStyles.themeBtn,
-                      {
-                        backgroundColor: t.backgroundColor,
-                        borderColor: isActive ? palette.primary : palette.gray200,
-                      },
+                      { backgroundColor: t.backgroundColor },
+                      isActive
+                        ? { borderColor: accent, borderWidth: 2 }
+                        : { borderColor: palette.gray200, borderWidth: 1.5 },
                     ]}
                     onPress={() => setTheme(key)}
                   >
@@ -272,7 +295,7 @@ export function ReaderScreen() {
                       {t.label}
                     </Text>
                     {isActive && (
-                      <Ionicons name="checkmark" size={14} color={palette.primary} style={{ marginLeft: 4 }} />
+                      <Ionicons name="checkmark" size={14} color={accent} style={{ marginLeft: 4 }} />
                     )}
                   </TouchableOpacity>
                 );
@@ -285,6 +308,7 @@ export function ReaderScreen() {
   );
 }
 
+
 const headerStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   btn: { paddingHorizontal: 10, paddingVertical: 6 },
@@ -294,68 +318,91 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: spacing.xl, paddingBottom: 60 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title: { fontWeight: '700', lineHeight: 36, marginBottom: spacing.md },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  title: {
+    fontWeight: '700',
+    lineHeight: 36,
+    marginBottom: spacing.sm,
+    letterSpacing: -0.3,
+  },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: spacing.sm },
   meta: { fontSize: 13, marginBottom: 4 },
   divider: { height: 1, marginVertical: spacing.lg },
   emptyContent: { alignItems: 'center', marginTop: 60 },
   emptyText: { textAlign: 'center', fontSize: 15, lineHeight: 22, marginTop: spacing.md },
   urlText: { fontSize: 13, marginTop: spacing.sm },
   errorText: { fontSize: 16, color: palette.gray500, marginTop: spacing.md, marginBottom: spacing.lg },
-  backLink: { color: palette.primary, fontSize: 16, fontWeight: '600' },
+  backLink: { fontSize: 16, fontWeight: '600' },
 });
 
 const settingsStyles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   panel: {
-    backgroundColor: palette.white, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.xl, paddingBottom: 40, paddingTop: spacing.md,
+    // Papel como fundo do painel — design system §2
+    backgroundColor: palette.gray50,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: 40,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderColor: palette.gray200,
   },
   handle: {
     width: 36, height: 4, borderRadius: 2,
     backgroundColor: palette.gray300, alignSelf: 'center', marginBottom: spacing.lg,
   },
   heading: {
-    fontSize: 13, fontWeight: '600', color: palette.gray500,
-    marginBottom: spacing.sm, marginTop: spacing.md,
-    textTransform: 'uppercase', letterSpacing: 0.5,
+    fontSize: 12,
+    fontWeight: '500',
+    color: palette.gray500,
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
 
-  // Font size stepper
+  // Stepper de tamanho
   sizeRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: spacing.xl, marginBottom: spacing.md,
   },
   sizeControl: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: palette.gray100, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: palette.gray100,
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: palette.gray200,
   },
-  sizeValue: { fontSize: 18, fontWeight: '700', color: palette.gray900, minWidth: 50, textAlign: 'center' },
+  sizeValue: {
+    fontSize: 18, fontWeight: '700',
+    color: palette.gray900,
+    minWidth: 50, textAlign: 'center',
+  },
 
-  // Font buttons
+  // Fonte
   fontBtn: {
-    flex: 1, minWidth: 80, paddingVertical: 10, borderRadius: radius.md,
-    borderWidth: 1.5, borderColor: palette.gray200, alignItems: 'center',
+    flex: 1, minWidth: 80, paddingVertical: 10,
+    borderRadius: radius.md, borderWidth: 1.5,
+    borderColor: palette.gray200, alignItems: 'center',
+    backgroundColor: palette.white,
   },
-  fontBtnActive: { borderColor: palette.primary, backgroundColor: palette.primary + '10' },
   fontBtnText: { fontSize: 14, color: palette.gray600 },
-  fontBtnTextActive: { color: palette.primary, fontWeight: '600' },
 
-  // Line height
+  // Espaçamento
   lhBtn: {
     flex: 1, paddingVertical: 8, borderRadius: radius.md,
-    borderWidth: 1.5, borderColor: palette.gray200, alignItems: 'center',
-    flexDirection: 'row', justifyContent: 'center', gap: 4,
+    borderWidth: 1.5, borderColor: palette.gray200,
+    alignItems: 'center', flexDirection: 'row',
+    justifyContent: 'center', gap: 4,
+    backgroundColor: palette.white,
   },
-  lhBtnActive: { borderColor: palette.primary, backgroundColor: palette.primary + '10' },
   lhText: { fontSize: 13, color: palette.gray500 },
-  lhTextActive: { color: palette.primary, fontWeight: '600' },
 
-  // Theme
+  // Tema
   themeBtn: {
-    flex: 1, minWidth: 65, paddingVertical: 10, borderRadius: radius.md,
-    borderWidth: 2, alignItems: 'center', flexDirection: 'row', justifyContent: 'center',
+    flex: 1, minWidth: 65, paddingVertical: 10,
+    borderRadius: radius.md, alignItems: 'center',
+    flexDirection: 'row', justifyContent: 'center',
   },
   themeBtnText: { fontSize: 13, fontWeight: '500' },
 });

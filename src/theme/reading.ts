@@ -1,43 +1,43 @@
 import { ReadingPreferences } from '../types';
 
-// Temas de leitura (fundo do artigo)
+// Temas de leitura — design system §10
+// Valores derivados de ReadingThemes.ts; linkColor para tagsStyles.a
 export const READING_THEMES = {
-  light: {
-    label: 'Claro',
-    backgroundColor: '#ffffff',
-    textColor: '#111827',
+  papel: {
+    label:           'Papel',
+    backgroundColor: '#FAF8F5',
+    textColor:       '#1C1917',
+    linkColor:       '#C97B4B', // Âmbar
   },
   sepia: {
-    label: 'Sépia',
-    backgroundColor: '#f5f0e8',
-    textColor: '#3d2b1f',
+    label:           'Sépia',
+    backgroundColor: '#F5ECD7',
+    textColor:       '#3B2E1A',
+    linkColor:       '#A0621A',
   },
-  dark: {
-    label: 'Escuro',
-    backgroundColor: '#1a1a2e',
-    textColor: '#e2e8f0',
-  },
-  black: {
-    label: 'Preto',
-    backgroundColor: '#000000',
-    textColor: '#e2e8f0',
+  escuro: {
+    label:           'Escuro',
+    backgroundColor: '#1A1916',
+    textColor:       '#E8E3DA',
+    linkColor:       '#E09A6A',
   },
 } as const;
 
 export type ReadingThemeKey = keyof typeof READING_THEMES;
 
+// Fontes disponíveis para o usuário no leitor
 export const FONT_FAMILIES = {
-  'System': '-apple-system, "Helvetica Neue", sans-serif',
-  'Georgia': 'Georgia, serif',
-  'Times New Roman': '"Times New Roman", Times, serif',
+  'Georgia':     'Georgia',
+  'System':      'System',
+  'Merriweather': 'Merriweather',
 } as const;
 
 export type FontFamilyKey = keyof typeof FONT_FAMILIES;
 
 export const DEFAULT_READING_PREFS: ReadingPreferences = {
-  fontSize: 17,
-  fontFamily: 'System',
-  backgroundColor: READING_THEMES.light.backgroundColor,
-  textColor: READING_THEMES.light.textColor,
-  lineHeight: 1.7,
+  fontSize:        17,
+  fontFamily:      'Georgia',                              // serif como padrão — design system §3
+  backgroundColor: READING_THEMES.papel.backgroundColor,
+  textColor:       READING_THEMES.papel.textColor,
+  lineHeight:      1.7,
 };
