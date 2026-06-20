@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet,
   TouchableOpacity, Alert,
 } from 'react-native';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useArticleStore } from '../stores/articleStore';
 import { useFolderStore } from '../stores/folderStore';
@@ -20,10 +20,12 @@ export function FolderDetailScreen() {
   const { articles, loadArticles, deleteArticle, toggleFavorite } = useArticleStore();
   const { folders, loadFolders } = useFolderStore();
 
-  useEffect(() => {
-    loadArticles(folderId);
-    loadFolders(folderId);
-  }, [folderId, loadArticles, loadFolders]);
+  useFocusEffect(
+    useCallback(() => {
+      loadArticles(folderId);
+      loadFolders(folderId);
+    }, [folderId, loadArticles, loadFolders])
+  );
 
   const handleDeleteArticle = (article: Article) => {
     Alert.alert(

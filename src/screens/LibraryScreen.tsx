@@ -3,7 +3,7 @@ import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   TextInput, Alert, Modal, Pressable,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFolderStore } from '../stores/folderStore';
 import { useArticleStore } from '../stores/articleStore';
@@ -19,10 +19,12 @@ export function LibraryScreen() {
   const [newFolderName, setNewFolderName] = useState('');
   const [showFolderModal, setShowFolderModal] = useState(false);
 
-  useEffect(() => {
-    loadFolders(null);
-    loadArticles(null);
-  }, [loadFolders, loadArticles]);
+  useFocusEffect(
+    useCallback(() => {
+      loadFolders(null);
+      loadArticles(null);
+    }, [loadFolders, loadArticles])
+  );
 
   const handleCreateFolder = useCallback(async () => {
     if (!newFolderName.trim()) return;

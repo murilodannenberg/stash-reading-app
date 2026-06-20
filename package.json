@@ -16,6 +16,7 @@
     "expo-sqlite": "~56.0.5",
     "expo-status-bar": "~56.0.4",
     "expo-web-browser": "~56.0.5",
+    "linkedom": "^0.18.12",
     "react": "19.2.3",
     "react-native": "0.85.3",
     "react-native-get-random-values": "^2.0.0",
@@ -25,6 +26,7 @@
     "react-native-render-html": "^6.3.4",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
+    "react-native-webview": "13.16.1",
     "uuid": "^14.0.0",
     "zustand": "^5.0.5"
   },

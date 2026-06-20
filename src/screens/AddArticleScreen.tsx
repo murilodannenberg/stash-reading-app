@@ -6,6 +6,7 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { createArticle } from '../database';
+import { fetchAndParse } from '../services/articleParser';
 import { RootStackParamList } from '../types';
 import { palette } from '../theme/colors';
 
@@ -48,18 +49,38 @@ export function AddArticleScreen() {
     }
   }, [title, url, folderId, navigation]);
 
-  // URL parsing via Readability will be implemented in v0.2
   const handleSaveUrl = useCallback(async () => {
-    if (!url.trim()) {
+    const trimmed = url.trim();
+    if (!trimmed) {
       Alert.alert('URL obrigatória', 'Informe uma URL válida.');
       return;
     }
-    Alert.alert(
-      'Em breve',
-      'O parser de artigos via URL será implementado na v0.2. Por enquanto, use o modo manual.',
-      [{ text: 'OK' }]
-    );
-  }, [url]);
+    if (!/^https?:\/\/.+/i.test(trimmed)) {
+      Alert.alert('URL inválida', 'A URL deve começar com http:// ou https://');
+      return;
+    }
+    setLoading(true);
+    try {
+      const parsed = await fetchAndParse(trimmed);
+      await createArticle({
+        title: parsed.title,
+        url: trimmed,
+        content_html: parsed.content_html,
+        content_text: parsed.content_text,
+        author: parsed.author,
+        published_at: null,
+        cover_image_path: null,
+        reading_time_min: parsed.reading_time_min,
+        folder_id: folderId,
+      });
+      navigation.goBack();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erro desconhecido ao processar a URL.';
+      Alert.alert('Erro ao salvar', msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [url, folderId, navigation]);
 
   return (
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
