@@ -1,15 +1,17 @@
 import { create } from 'zustand';
 import { MMKV } from 'react-native-mmkv';
-import { HOME_THEMES, ACCENT_COLORS, HomeThemeKey } from '../theme/colors';
+import { HOME_THEMES, ACCENT_COLOR, HomeThemeKey } from '../theme/colors';
 
 export interface AppThemePrefs {
   accentColor: string;
   homeTheme: HomeThemeKey;
 }
 
+const VALID_THEMES = new Set<string>(Object.keys(HOME_THEMES));
+
 const DEFAULT_APP_THEME: AppThemePrefs = {
-  accentColor: ACCENT_COLORS[0],
-  homeTheme: 'light',
+  accentColor: ACCENT_COLOR,
+  homeTheme: 'papel',
 };
 
 let storage: MMKV | null = null;
@@ -24,7 +26,15 @@ function loadTheme(): AppThemePrefs {
   try {
     const raw = getStorage().getString(STORAGE_KEY);
     if (!raw) return DEFAULT_APP_THEME;
-    return { ...DEFAULT_APP_THEME, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    // Migra chaves antigas (light/cream/dark/black) para os novos nomes
+    const themeMap: Record<string, HomeThemeKey> = {
+      light: 'papel', cream: 'sepia', dark: 'escuro', black: 'escuro',
+    };
+    const homeTheme: HomeThemeKey = VALID_THEMES.has(parsed.homeTheme)
+      ? parsed.homeTheme
+      : (themeMap[parsed.homeTheme] ?? DEFAULT_APP_THEME.homeTheme);
+    return { ...DEFAULT_APP_THEME, ...parsed, homeTheme };
   } catch {
     return DEFAULT_APP_THEME;
   }

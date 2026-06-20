@@ -1,141 +1,103 @@
-// App palette — UI chrome (não confundir com temas de leitura)
+// App palette — UI chrome
+// Fonte de verdade: docs/DESIGN_SYSTEM.md §2
+// Não usar valores avulsos fora daqui; usar tokens.ts para valores semânticos.
+
 export const palette = {
-  // Brand
-  primary: '#6366f1',   // indigo
-  primaryLight: '#a5b4fc',
-  primaryDark: '#4f46e5',
-  accent: '#f59e0b',    // amber
+  // Acento único — Âmbar
+  primary:      '#C97B4B',
+  primaryLight: '#E09A6A',
+  primaryDark:  '#A0621A',
 
-  // Neutrals
+  // Base
   white: '#ffffff',
-  black: '#000000',
-  gray50:  '#f9fafb',
-  gray100: '#f3f4f6',
-  gray200: '#e5e7eb',
-  gray300: '#d1d5db',
-  gray400: '#9ca3af',
-  gray500: '#6b7280',
-  gray600: '#4b5563',
-  gray700: '#374151',
-  gray800: '#1f2937',
-  gray900: '#111827',
+  black: '#1C1917', // Nunca preto puro — usar Tinta
 
-  // Semantic
+  // Escala neutra mapeada ao design system (tons quentes, não azul-cinza)
+  gray50:  '#FAF8F5', // Papel
+  gray100: '#F0ECE6',
+  gray200: '#EDE9E3', // Pergaminho
+  gray300: '#D5CFC8',
+  gray400: '#9B9189', // Cinza-terra
+  gray500: '#6B6560',
+  gray600: '#4A4540',
+  gray700: '#3A3530',
+  gray800: '#2A2520',
+  gray900: '#1C1917', // Tinta
+
+  // Semântico
   danger:  '#ef4444',
   success: '#22c55e',
-  warning: '#f59e0b',
+  warning: '#C97B4B',
 } as const;
 
-// Spacing scale (4px base)
+// Spacing scale (8pt base — design system §5)
 export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  '2xl': 24,
-  '3xl': 32,
-  '4xl': 40,
+  xs:   4,
+  sm:   8,
+  md:   12,
+  lg:   16,
+  xl:   24,
+  '2xl': 32,
+  '3xl': 40,
 } as const;
 
 // Border radius
 export const radius = {
-  sm: 6,
-  md: 10,
-  lg: 14,
-  xl: 20,
+  xs:   4,
+  sm:   8,
+  md:   12,
+  lg:   16,
+  xl:   24,
   full: 9999,
 } as const;
 
-// Typography
+// Typography tokens
 export const typography = {
-  title: { fontSize: 22, fontWeight: '700' as const, letterSpacing: -0.3 },
-  heading: { fontSize: 18, fontWeight: '700' as const, letterSpacing: -0.2 },
-  subheading: { fontSize: 15, fontWeight: '600' as const },
-  body: { fontSize: 15, fontWeight: '400' as const },
-  caption: { fontSize: 13, fontWeight: '400' as const },
-  label: { fontSize: 12, fontWeight: '600' as const, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
+  title:      { fontSize: 20, fontWeight: '600' as const, letterSpacing: -0.2 },
+  heading:    { fontSize: 18, fontWeight: '600' as const, letterSpacing: -0.2 },
+  subheading: { fontSize: 15, fontWeight: '500' as const },
+  body:       { fontSize: 15, fontWeight: '400' as const },
+  caption:    { fontSize: 13, fontWeight: '400' as const },
+  label:      { fontSize: 12, fontWeight: '500' as const, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
 } as const;
 
-// Light theme (app chrome)
-export const lightTheme = {
-  background: palette.white,
-  surface: palette.gray50,
-  border: palette.gray200,
-  text: palette.gray900,
-  textSecondary: palette.gray500,
-  primary: palette.primary,
-  tabBar: palette.white,
-  header: palette.white,
-} as const;
+// Acento padrão do app
+export const ACCENT_COLOR = palette.primary;
 
-// Dark theme (app chrome)
-export const darkTheme = {
-  background: palette.gray900,
-  surface: palette.gray800,
-  border: palette.gray700,
-  text: palette.white,
-  textSecondary: palette.gray400,
-  primary: palette.primary,
-  tabBar: palette.gray900,
-  header: palette.gray900,
-} as const;
+// Mantido para compatibilidade com SettingsScreen (array de um item = acento único)
+export const ACCENT_COLORS = [palette.primary] as const;
 
-export type AppTheme = typeof lightTheme;
-
-// Accent colors for user customization
-export const ACCENT_COLORS = [
-  '#6366f1', // indigo (default)
-  '#3b82f6', // blue
-  '#06b6d4', // cyan
-  '#10b981', // emerald
-  '#f59e0b', // amber
-  '#ef4444', // red
-  '#ec4899', // pink
-  '#8b5cf6', // violet
-] as const;
-
-// Home / app chrome themes
+// Temas da interface — derivados da paleta do design system
 export const HOME_THEMES = {
-  light: {
-    label: 'Claro',
-    background: '#f9fafb',
-    surface: '#ffffff',
-    text: '#111827',
-    textSecondary: '#6b7280',
-    textMuted: '#9ca3af',
-    border: '#e5e7eb',
-    inputBg: '#f3f4f6',
+  papel: {
+    label:         'Papel',
+    background:    '#FAF8F5',
+    surface:       '#FFFFFF',
+    text:          '#1C1917',
+    textSecondary: '#6B6560',
+    textMuted:     '#9B9189',
+    border:        '#EDE9E3',
+    inputBg:       '#F0ECE6',
   },
-  cream: {
-    label: 'Creme',
-    background: '#faf5ed',
-    surface: '#fffdf8',
-    text: '#3d2b1f',
-    textSecondary: '#6b5d4f',
-    textMuted: '#9c8e7f',
-    border: '#e8ddd0',
-    inputBg: '#f5efe5',
+  sepia: {
+    label:         'Sépia',
+    background:    '#F5ECD7',
+    surface:       '#FBF5E8',
+    text:          '#3B2E1A',
+    textSecondary: '#6B5040',
+    textMuted:     '#9B8070',
+    border:        '#E2D5C0',
+    inputBg:       '#EEE3CE',
   },
-  dark: {
-    label: 'Escuro',
-    background: '#1a1a2e',
-    surface: '#252547',
-    text: '#e2e8f0',
-    textSecondary: '#94a3b8',
-    textMuted: '#64748b',
-    border: '#334155',
-    inputBg: '#1e293b',
-  },
-  black: {
-    label: 'Preto',
-    background: '#000000',
-    surface: '#111111',
-    text: '#e2e8f0',
-    textSecondary: '#94a3b8',
-    textMuted: '#64748b',
-    border: '#222222',
-    inputBg: '#111111',
+  escuro: {
+    label:         'Escuro',
+    background:    '#1A1916',
+    surface:       '#252420',
+    text:          '#E8E3DA',
+    textSecondary: '#9B9189',
+    textMuted:     '#6B6560',
+    border:        '#2E2C28',
+    inputBg:       '#201E1C',
   },
 } as const;
 

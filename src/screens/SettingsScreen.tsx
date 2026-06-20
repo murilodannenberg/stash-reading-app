@@ -5,56 +5,30 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import {
-  ACCENT_COLORS, HOME_THEMES, HomeThemeKey,
+  HOME_THEMES, HomeThemeKey,
   spacing, radius, typography,
 } from '../theme/colors';
+import { Colors } from '../theme/tokens';
 
 export function SettingsScreen() {
-  const { prefs, _hydrate, setAccentColor, setHomeTheme } = useAppThemeStore();
+  const { prefs, _hydrate, setHomeTheme } = useAppThemeStore();
   const colors = getHomeColors(prefs.homeTheme);
+  const accent = prefs.accentColor;
 
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Logo placeholder */}
+      {/* Logo */}
       <View style={styles.logoSection}>
-        <View style={[styles.logoCircle, { backgroundColor: prefs.accentColor }]}>
-          <Text style={styles.logoText}>S</Text>
+        <View style={[styles.logoMark, { backgroundColor: accent + '18', borderColor: accent + '40' }]}>
+          <Text style={[styles.logoText, { color: accent }]}>S</Text>
         </View>
         <Text style={[styles.appName, { color: colors.text }]}>Stash</Text>
         <Text style={[styles.appVersion, { color: colors.textMuted }]}>v0.3.0</Text>
       </View>
 
-      {/* Accent color */}
-      <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-        Cor de destaque
-      </Text>
-      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={styles.colorGrid}>
-          {ACCENT_COLORS.map((c) => {
-            const isActive = prefs.accentColor === c;
-            return (
-              <TouchableOpacity
-                key={c}
-                style={[
-                  styles.colorSwatch,
-                  { backgroundColor: c },
-                  isActive && styles.colorSwatchActive,
-                  isActive && { borderColor: c },
-                ]}
-                onPress={() => setAccentColor(c)}
-              >
-                {isActive && (
-                  <Ionicons name="checkmark" size={18} color="#fff" />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Home theme */}
+      {/* Tema da interface */}
       <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
         Tema da interface
       </Text>
@@ -70,22 +44,22 @@ export function SettingsScreen() {
                   styles.themeBtn,
                   {
                     backgroundColor: t.background,
-                    borderColor: isActive ? prefs.accentColor : colors.border,
-                    borderWidth: isActive ? 2.5 : 1,
+                    borderColor: isActive ? accent : t.border,
+                    borderWidth: isActive ? 2 : 1,
                   },
                 ]}
                 onPress={() => setHomeTheme(key)}
               >
-                <Text style={[styles.themeBtnText, { color: t.text }]}>
-                  {t.label}
-                </Text>
+                {/* Miniatura de texto */}
+                <View style={[styles.themeSwatch, { borderColor: t.border }]}>
+                  <View style={[styles.themeSwatchLine, { backgroundColor: t.text, width: '70%' }]} />
+                  <View style={[styles.themeSwatchLine, { backgroundColor: t.textMuted, width: '50%', marginTop: 3 }]} />
+                </View>
+                <Text style={[styles.themeBtnLabel, { color: t.text }]}>{t.label}</Text>
                 {isActive && (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={16}
-                    color={prefs.accentColor}
-                    style={{ marginLeft: 4 }}
-                  />
+                  <View style={[styles.themeCheck, { backgroundColor: accent }]}>
+                    <Ionicons name="checkmark" size={10} color="#fff" />
+                  </View>
                 )}
               </TouchableOpacity>
             );
@@ -93,7 +67,7 @@ export function SettingsScreen() {
         </View>
       </View>
 
-      {/* About */}
+      {/* Sobre */}
       <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
         Sobre
       </Text>
@@ -104,16 +78,18 @@ export function SettingsScreen() {
             100% offline, sem rastreamento
           </Text>
         </View>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.aboutRow}>
           <Ionicons name="logo-github" size={18} color={colors.textMuted} />
           <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
             Open source — stash-reading-app
           </Text>
         </View>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.aboutRow}>
-          <Ionicons name="heart-outline" size={18} color={colors.textMuted} />
+          <Ionicons name="heart-outline" size={18} color={Colors.ambar} />
           <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
-            Feito com amor, sem anuncios
+            Feito com carinho, sem anúncios
           </Text>
         </View>
       </View>
@@ -128,12 +104,13 @@ const styles = StyleSheet.create({
 
   // Logo
   logoSection: { alignItems: 'center', paddingTop: spacing['3xl'], paddingBottom: spacing.xl },
-  logoCircle: {
-    width: 72, height: 72, borderRadius: 36,
+  logoMark: {
+    width: 72, height: 72, borderRadius: radius.xl,
+    borderWidth: 1.5,
     justifyContent: 'center', alignItems: 'center',
     marginBottom: spacing.md,
   },
-  logoText: { fontSize: 32, fontWeight: '800', color: '#fff', letterSpacing: -1 },
+  logoText: { fontSize: 34, fontWeight: '700', letterSpacing: -1 },
   appName: { ...typography.title, marginBottom: 2 },
   appVersion: { ...typography.caption },
 
@@ -153,35 +130,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
 
-  // Accent color grid
-  colorGrid: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    gap: spacing.md, justifyContent: 'center',
-  },
-  colorSwatch: {
-    width: 44, height: 44, borderRadius: 22,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  colorSwatchActive: {
-    borderWidth: 3, borderColor: '#fff',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2, shadowRadius: 4, elevation: 4,
-  },
-
   // Theme buttons
   themeRow: {
-    flexDirection: 'row', flexWrap: 'wrap',
+    flexDirection: 'row',
     gap: spacing.sm,
   },
   themeBtn: {
-    flex: 1, minWidth: 70,
-    paddingVertical: spacing.md,
+    flex: 1,
     borderRadius: radius.md,
+    padding: spacing.md,
     alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
+    position: 'relative',
   },
-  themeBtnText: { fontSize: 13, fontWeight: '600' },
+  themeSwatch: {
+    width: '100%', height: 36,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  themeSwatchLine: {
+    height: 3, borderRadius: 2,
+  },
+  themeBtnLabel: { fontSize: 12, fontWeight: '500' },
+  themeCheck: {
+    position: 'absolute', top: 6, right: 6,
+    width: 16, height: 16, borderRadius: 8,
+    justifyContent: 'center', alignItems: 'center',
+  },
+
+  // Divider
+  divider: { height: 1, marginVertical: spacing.xs },
 
   // About
   aboutRow: {
