@@ -8,6 +8,7 @@ export interface ParsedArticle {
   content_text: string;
   reading_time_min: number;
   excerpt: string | null;
+  cover_image_url: string | null;
 }
 
 function estimateReadingTime(text: string): number {
@@ -43,6 +44,9 @@ export async function fetchAndParse(url: string): Promise<ParsedArticle> {
     document.head.appendChild(base);
   }
 
+  // Extract cover image before Readability mutates the DOM
+  const coverImageUrl = extractCoverImage(document, url);
+
   const reader = new Readability(document as unknown as Document);
   const article = reader.parse();
 
@@ -61,5 +65,41 @@ export async function fetchAndParse(url: string): Promise<ParsedArticle> {
     content_text: textContent,
     reading_time_min: estimateReadingTime(textContent),
     excerpt: article.excerpt || null,
+    cover_image_url: coverImageUrl,
   };
+}
+
+function extractCoverImage(document: ReturnType<typeof parseHTML>['document'], baseUrl: string): string | null {
+  // 1. og:image (most reliable)
+  const ogImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+  if (ogImage) return resolveUrl(ogImage, baseUrl);
+
+  // 2. twitter:image
+  const twitterImage = document.querySelector('meta[name="twitter:image"]')?.getAttribute('content');
+  if (twitterImage) return resolveUrl(twitterImage, baseUrl);
+
+  // 3. First large image in the article body
+  const imgs = document.querySelectorAll('article img, .post img, .entry-content img, main img');
+  for (let i = 0; i < imgs.length; i++) {
+    const img = imgs[i];
+    const src = img.getAttribute('src');
+    if (!src) continue;
+    // Skip tiny icons, tracking pixels, SVGs
+    const width = parseInt(img.getAttribute('width') ?? '0', 10);
+    const height = parseInt(img.getAttribute('height') ?? '0', 10);
+    if ((width > 0 && width < 100) || (height > 0 && height < 100)) continue;
+    if (src.includes('.svg') || src.includes('data:image/svg')) continue;
+    return resolveUrl(src, baseUrl);
+  }
+
+  return null;
+}
+
+function resolveUrl(src: string, baseUrl: string): string {
+  if (src.startsWith('http://') || src.startsWith('https://')) return src;
+  try {
+    return new URL(src, baseUrl).toString();
+  } catch {
+    return src;
+  }
 }

@@ -8,6 +8,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { createArticle } from '../database';
 import { fetchAndParse } from '../services/articleParser';
+import { downloadCoverImage } from '../services/imageStorage';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { RootStackParamList } from '../types';
 import { spacing, radius, typography } from '../theme/colors';
@@ -67,7 +68,7 @@ export function AddArticleScreen() {
     setLoading(true);
     try {
       const parsed = await fetchAndParse(trimmed);
-      await createArticle({
+      const article = await createArticle({
         title: parsed.title,
         url: trimmed,
         content_html: parsed.content_html,
@@ -78,6 +79,18 @@ export function AddArticleScreen() {
         reading_time_min: parsed.reading_time_min,
         folder_id: folderId,
       });
+
+      // Download cover image in the background (non-blocking for UX)
+      if (parsed.cover_image_url) {
+        downloadCoverImage(parsed.cover_image_url, article.id).then((localPath) => {
+          if (localPath) {
+            import('../database').then(({ updateArticleCover }) => {
+              updateArticleCover(article.id, localPath);
+            });
+          }
+        });
+      }
+
       navigation.goBack();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Erro desconhecido ao processar a URL.';

@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
-  TextInput, Alert, Modal, Pressable, Share,
+  TextInput, Alert, Modal, Pressable, Share, Image,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -34,6 +34,7 @@ export function LibraryScreen() {
 
   const [newFolderName, setNewFolderName] = useState('');
   const [showFolderModal, setShowFolderModal] = useState(false);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,6 +84,17 @@ export function LibraryScreen() {
     return result;
   }, [articles, statusFilter, searchQuery]);
 
+  const hasActiveFilters = statusFilter !== 'all' || selectedTag !== null || searchQuery.trim().length > 0;
+  const activeFilterCount = (statusFilter !== 'all' ? 1 : 0) + (selectedTag ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
+  const selectedTagObj = selectedTag ? tags.find((t: Tag) => t.id === selectedTag) : null;
+
+  const clearAllFilters = useCallback(() => {
+    setStatusFilter('all');
+    setSelectedTag(null);
+    setSearchQuery('');
+    loadArticles(null);
+  }, [loadArticles]);
+
   const handleCreateFolder = useCallback(async () => {
     if (!newFolderName.trim()) return;
     await createFolder(newFolderName.trim());
@@ -120,10 +132,10 @@ export function LibraryScreen() {
   const handleFolderActions = useCallback((folder: Folder) => {
     Alert.alert(folder.name, undefined, [
       {
-        text: 'Excluir pasta',
+        text: 'Excluir estante',
         style: 'destructive',
         onPress: () => {
-          Alert.alert('Remover pasta', `Remover "${folder.name}" e todo seu conteudo?`, [
+          Alert.alert('Remover estante', `Remover "${folder.name}" e todo seu conteudo?`, [
             { text: 'Cancelar', style: 'cancel' },
             { text: 'Remover', style: 'destructive', onPress: () => deleteFolder(folder.id) },
           ]);
@@ -150,7 +162,7 @@ export function LibraryScreen() {
       onLongPress={() => handleFolderActions(item)}
     >
       <View style={[styles.folderIconWrap, { backgroundColor: accent + '18' }]}>
-        <Ionicons name="folder" size={20} color={accent} />
+        <Ionicons name="library-outline" size={20} color={accent} />
       </View>
       <Text style={[styles.folderName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
     </TouchableOpacity>
@@ -163,9 +175,17 @@ export function LibraryScreen() {
       onPress={() => navigation.navigate('Reader', { articleId: item.id })}
       onLongPress={() => handleArticleActions(item)}
     >
-      <View style={styles.articleLeft}>
-        <View style={[styles.readDot, { backgroundColor: accent }, item.is_read && { backgroundColor: colors.border }]} />
-      </View>
+      {item.cover_image_path != null ? (
+        <Image
+          source={{ uri: item.cover_image_path }}
+          style={[styles.articleThumb, { backgroundColor: colors.inputBg }]}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={[styles.articleThumbPlaceholder, { backgroundColor: colors.inputBg }]}>
+          <Ionicons name="document-text-outline" size={22} color={colors.textMuted} />
+        </View>
+      )}
       <View style={styles.articleBody}>
         <Text
           style={[styles.articleTitle, { color: colors.text }, item.is_read && { color: colors.textSecondary, fontWeight: '400' }]}
@@ -213,92 +233,72 @@ export function LibraryScreen() {
 
   const ListHeader = () => (
     <View>
-      {/* Search bar */}
-      <View style={[styles.searchRow, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <View style={[styles.searchWrap, { backgroundColor: colors.inputBg }]}>
-          <Ionicons name="search" size={16} color={colors.textMuted} style={styles.searchIcon} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Buscar artigos..."
-            placeholderTextColor={colors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
+      {/* Filter bar: icon + active chips */}
+      <View style={[styles.filterBar, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.filterIconBtn, { backgroundColor: hasActiveFilters ? accent : colors.inputBg }]}
+          onPress={() => setShowFilterSheet(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="options-outline"
+            size={18}
+            color={hasActiveFilters ? '#fff' : colors.textMuted}
           />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={16} color={colors.textMuted} />
-            </TouchableOpacity>
+          {activeFilterCount > 0 && (
+            <View style={[styles.filterBadge, { backgroundColor: hasActiveFilters ? '#fff' : accent }]}>
+              <Text style={[styles.filterBadgeText, { color: hasActiveFilters ? accent : '#fff' }]}>
+                {activeFilterCount}
+              </Text>
+            </View>
           )}
-        </View>
-      </View>
+        </TouchableOpacity>
 
-      {/* Status filter chips */}
-      <View style={styles.filterRow}>
-        {FILTERS.map((f) => {
-          const isActive = statusFilter === f.key;
-          return (
+        <FlatList
+          data={[
+            ...(statusFilter !== 'all'
+              ? [{ id: 'status', label: FILTERS.find((f) => f.key === statusFilter)!.label, type: 'status' as const }]
+              : []),
+            ...(selectedTagObj
+              ? [{ id: 'tag', label: selectedTagObj.name, type: 'tag' as const, color: selectedTagObj.color }]
+              : []),
+            ...(searchQuery.trim()
+              ? [{ id: 'search', label: `"${searchQuery.trim()}"`, type: 'search' as const }]
+              : []),
+          ]}
+          keyExtractor={(i) => i.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.activeChipRow}
+          renderItem={({ item }) => (
             <TouchableOpacity
-              key={f.key}
-              style={[
-                styles.filterChip,
-                { borderColor: colors.border },
-                isActive && { backgroundColor: accent + '15', borderColor: accent },
-              ]}
-              onPress={() => setStatusFilter(f.key)}
+              style={[styles.activeChip, { backgroundColor: colors.inputBg }]}
+              onPress={() => {
+                if (item.type === 'status') setStatusFilter('all');
+                else if (item.type === 'tag') { setSelectedTag(null); loadArticles(null); }
+                else if (item.type === 'search') setSearchQuery('');
+              }}
               activeOpacity={0.7}
             >
-              <Ionicons
-                name={f.icon as keyof typeof Ionicons.glyphMap}
-                size={14}
-                color={isActive ? accent : colors.textMuted}
-              />
-              <Text style={[
-                styles.filterText,
-                { color: colors.textSecondary },
-                isActive && { color: accent, fontWeight: '600' },
-              ]}>
-                {f.label}
+              {'color' in item && item.color && (
+                <View style={[styles.tagDot, { backgroundColor: item.color }]} />
+              )}
+              <Text style={[styles.activeChipText, { color: colors.text }]} numberOfLines={1}>
+                {item.label}
               </Text>
+              <Ionicons name="close" size={14} color={colors.textMuted} />
             </TouchableOpacity>
-          );
-        })}
+          )}
+          ListEmptyComponent={
+            <Text style={[styles.filterHint, { color: colors.textMuted }]}>Todos os artigos</Text>
+          }
+        />
       </View>
 
-      {/* Tag chips */}
-      {tags.length > 0 && (
-        <View style={styles.tagRow}>
-          {tags.map((tag: Tag) => {
-            const isActive = selectedTag === tag.id;
-            return (
-              <TouchableOpacity
-                key={tag.id}
-                style={[
-                  styles.tagChip,
-                  { borderColor: colors.border },
-                  isActive && { backgroundColor: tag.color + '18', borderColor: tag.color },
-                ]}
-                onPress={() => handleTagFilter(tag.id)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.tagDot, { backgroundColor: tag.color }]} />
-                <Text style={[
-                  styles.tagChipText,
-                  { color: colors.textSecondary },
-                  isActive && { color: tag.color, fontWeight: '600' },
-                ]}>
-                  {tag.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
-
-      {/* Folders */}
+      {/* Shelves */}
       {folders.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Pastas</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Estantes</Text>
           <FlatList
             data={folders}
             keyExtractor={(f) => f.id}
@@ -356,7 +356,7 @@ export function LibraryScreen() {
           activeOpacity={0.8}
           onPress={() => setShowFolderModal(true)}
         >
-          <Ionicons name="folder-open-outline" size={20} color={accent} />
+          <Ionicons name="library-outline" size={20} color={accent} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.fab, { backgroundColor: accent, shadowColor: accent }]}
@@ -367,14 +367,125 @@ export function LibraryScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Filter bottom sheet */}
+      <Modal visible={showFilterSheet} transparent animationType="slide" onRequestClose={() => setShowFilterSheet(false)}>
+        <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={() => setShowFilterSheet(false)}>
+          <Pressable style={[styles.sheet, { backgroundColor: colors.surface }]}>
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: colors.text }]}>Filtros</Text>
+              {hasActiveFilters && (
+                <TouchableOpacity onPress={() => { clearAllFilters(); setShowFilterSheet(false); }}>
+                  <Text style={[styles.sheetClear, { color: accent }]}>Limpar</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Search */}
+            <Text style={[styles.sheetLabel, { color: colors.textSecondary }]}>Busca</Text>
+            <View style={[styles.sheetSearchWrap, { backgroundColor: colors.inputBg }]}>
+              <Ionicons name="search" size={16} color={colors.textMuted} style={{ marginRight: spacing.sm }} />
+              <TextInput
+                style={[styles.sheetSearchInput, { color: colors.text }]}
+                placeholder="Buscar por titulo ou autor..."
+                placeholderTextColor={colors.textMuted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Status */}
+            <Text style={[styles.sheetLabel, { color: colors.textSecondary }]}>Status</Text>
+            <View style={styles.sheetChipRow}>
+              {FILTERS.map((f) => {
+                const isActive = statusFilter === f.key;
+                return (
+                  <TouchableOpacity
+                    key={f.key}
+                    style={[
+                      styles.sheetChip,
+                      { backgroundColor: colors.inputBg },
+                      isActive && { backgroundColor: accent + '15', borderColor: accent, borderWidth: 1.5 },
+                    ]}
+                    onPress={() => setStatusFilter(f.key)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={f.icon as keyof typeof Ionicons.glyphMap}
+                      size={16}
+                      color={isActive ? accent : colors.textMuted}
+                    />
+                    <Text style={[
+                      styles.sheetChipText,
+                      { color: colors.textSecondary },
+                      isActive && { color: accent, fontWeight: '600' },
+                    ]}>
+                      {f.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Tags */}
+            {tags.length > 0 && (
+              <>
+                <Text style={[styles.sheetLabel, { color: colors.textSecondary }]}>Tags</Text>
+                <View style={styles.sheetChipRow}>
+                  {tags.map((tag: Tag) => {
+                    const isActive = selectedTag === tag.id;
+                    return (
+                      <TouchableOpacity
+                        key={tag.id}
+                        style={[
+                          styles.sheetChip,
+                          { backgroundColor: colors.inputBg },
+                          isActive && { backgroundColor: tag.color + '18', borderColor: tag.color, borderWidth: 1.5 },
+                        ]}
+                        onPress={() => handleTagFilter(tag.id)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.tagDot, { backgroundColor: tag.color }]} />
+                        <Text style={[
+                          styles.sheetChipText,
+                          { color: colors.textSecondary },
+                          isActive && { color: tag.color, fontWeight: '600' },
+                        ]}>
+                          {tag.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+
+            <TouchableOpacity
+              style={[styles.sheetDoneBtn, { backgroundColor: accent }]}
+              onPress={() => setShowFilterSheet(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.sheetDoneBtnText}>Aplicar</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </TouchableOpacity>
+      </Modal>
+
       {/* New folder modal */}
       <Modal visible={showFolderModal} transparent animationType="fade">
         <Pressable style={styles.overlay} onPress={() => setShowFolderModal(false)}>
           <Pressable style={[styles.modal, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Nova pasta</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Nova estante</Text>
             <TextInput
               style={[styles.modalInput, { borderColor: colors.border, color: colors.text }]}
-              placeholder="Nome da pasta"
+              placeholder="Nome da estante"
               placeholderTextColor={colors.textMuted}
               value={newFolderName}
               onChangeText={setNewFolderName}
@@ -407,42 +518,74 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { paddingBottom: 100 },
 
-  // Search
-  searchRow: {
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-  },
-  searchWrap: {
+  // Filter bar
+  filterBar: {
     flexDirection: 'row', alignItems: 'center',
-    borderRadius: radius.md, paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
+    borderBottomWidth: 1, gap: spacing.sm,
   },
-  searchIcon: { marginRight: spacing.sm },
-  searchInput: { flex: 1, paddingVertical: spacing.sm, fontSize: 14 },
-
-  // Filters
-  filterRow: {
-    flexDirection: 'row', paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md, gap: spacing.xs,
+  filterIconBtn: {
+    width: 36, height: 36, borderRadius: radius.sm,
+    justifyContent: 'center', alignItems: 'center',
   },
-  filterChip: {
+  filterBadge: {
+    position: 'absolute', top: -4, right: -4,
+    width: 18, height: 18, borderRadius: 9,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  filterBadgeText: { fontSize: 10, fontWeight: '700' },
+  activeChipRow: { gap: spacing.xs, paddingRight: spacing.sm },
+  activeChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: spacing.md, paddingVertical: 6,
-    borderRadius: radius.full, borderWidth: 1,
+    borderRadius: radius.full,
   },
-  filterText: { fontSize: 12 },
-
-  // Tags
-  tagRow: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.xs,
-  },
-  tagChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: spacing.md, paddingVertical: 5,
-    borderRadius: radius.full, borderWidth: 1,
-  },
+  activeChipText: { fontSize: 13, fontWeight: '500', maxWidth: 120 },
+  filterHint: { fontSize: 13, paddingVertical: 6 },
   tagDot: { width: 8, height: 8, borderRadius: 4 },
-  tagChipText: { fontSize: 12 },
+
+  // Filter bottom sheet
+  sheetOverlay: {
+    flex: 1, justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  sheet: {
+    borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.xl, paddingBottom: 40, paddingTop: spacing.md,
+  },
+  sheetHandle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: '#d1d5db', alignSelf: 'center', marginBottom: spacing.lg,
+  },
+  sheetHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  sheetTitle: { ...typography.heading },
+  sheetClear: { ...typography.body, fontWeight: '600' },
+  sheetLabel: {
+    ...typography.label, marginBottom: spacing.sm, marginTop: spacing.md,
+  },
+  sheetSearchWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: radius.md, paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  sheetSearchInput: { flex: 1, paddingVertical: spacing.sm, fontSize: 15 },
+  sheetChipRow: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm,
+  },
+  sheetChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
+    borderRadius: radius.full, borderWidth: 1, borderColor: 'transparent',
+  },
+  sheetChipText: { fontSize: 14 },
+  sheetDoneBtn: {
+    marginTop: spacing.xl, borderRadius: radius.md,
+    paddingVertical: 14, alignItems: 'center',
+  },
+  sheetDoneBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 
   // Sections
   section: { marginTop: spacing.lg },
@@ -477,8 +620,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg, padding: spacing.lg,
     borderWidth: 1,
   },
-  articleLeft: { marginRight: spacing.md, paddingTop: 6 },
-  readDot: { width: 8, height: 8, borderRadius: 4 },
+  articleThumb: {
+    width: 56, height: 56, borderRadius: radius.sm,
+    marginRight: spacing.md,
+  },
+  articleThumbPlaceholder: {
+    width: 56, height: 56, borderRadius: radius.sm,
+    marginRight: spacing.md,
+    justifyContent: 'center', alignItems: 'center',
+  },
   articleBody: { flex: 1 },
   articleTitle: { ...typography.subheading, marginBottom: 4 },
   articleMeta: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 },

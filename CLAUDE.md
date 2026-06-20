@@ -36,6 +36,11 @@ docs/BRIEFING.md   # spec completa do produto
 .claude/rules/     # regras modulares por tópico/caminho (criar conforme necessário)
 ```
 
+## Design system
+- **Referência obrigatória:** `docs/DESIGN_SYSTEM.md` — consultar antes de qualquer trabalho de UI.
+- Tokens de cor, espaçamento e tipografia em `src/theme/tokens.ts`, `src/theme/typography.ts`, `src/theme/ReadingThemes.ts`.
+- Antes de criar qualquer tela nova, verificar: tem token para isso? Se não tem, adicionar no `DESIGN_SYSTEM.md` antes de codar.
+
 ## Convenções
 - **TypeScript em modo strict.** Tipar tudo; evitar `any`.
 - Indentação de 2 espaços. Imports relativos. Prettier + ESLint cuidam de formatação

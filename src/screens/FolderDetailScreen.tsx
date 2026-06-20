@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet,
-  TouchableOpacity, Alert, Share,
+  TouchableOpacity, Alert, Share, Image,
 } from 'react-native';
 import { useRoute, useNavigation, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -62,10 +62,10 @@ export function FolderDetailScreen() {
   const handleFolderActions = (folder: Folder) => {
     Alert.alert(folder.name, undefined, [
       {
-        text: 'Excluir pasta',
+        text: 'Excluir estante',
         style: 'destructive',
         onPress: () => {
-          Alert.alert('Remover pasta', `Remover "${folder.name}" e todo seu conteudo?`, [
+          Alert.alert('Remover estante', `Remover "${folder.name}" e todo seu conteudo?`, [
             { text: 'Cancelar', style: 'cancel' },
             { text: 'Remover', style: 'destructive', onPress: () => deleteFolder(folder.id) },
           ]);
@@ -83,7 +83,7 @@ export function FolderDetailScreen() {
       onLongPress={() => handleFolderActions(item)}
     >
       <View style={[styles.folderIconWrap, { backgroundColor: accent + '18' }]}>
-        <Ionicons name="folder" size={18} color={accent} />
+        <Ionicons name="library-outline" size={18} color={accent} />
       </View>
       <Text style={[styles.folderName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
     </TouchableOpacity>
@@ -96,9 +96,17 @@ export function FolderDetailScreen() {
       onPress={() => navigation.navigate('Reader', { articleId: item.id })}
       onLongPress={() => handleArticleActions(item)}
     >
-      <View style={styles.articleLeft}>
-        <View style={[styles.readDot, { backgroundColor: accent }, item.is_read && { backgroundColor: colors.border }]} />
-      </View>
+      {item.cover_image_path != null ? (
+        <Image
+          source={{ uri: item.cover_image_path }}
+          style={[styles.articleThumb, { backgroundColor: colors.inputBg }]}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={[styles.articleThumbPlaceholder, { backgroundColor: colors.inputBg }]}>
+          <Ionicons name="document-text-outline" size={22} color={colors.textMuted} />
+        </View>
+      )}
       <View style={styles.articleBody}>
         <Text
           style={[styles.articleTitle, { color: colors.text }, item.is_read && { color: colors.textSecondary, fontWeight: '400' }]}
@@ -142,7 +150,7 @@ export function FolderDetailScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {folders.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Subpastas</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Seções</Text>
           <FlatList
             data={folders}
             keyExtractor={(f) => f.id}
@@ -162,7 +170,7 @@ export function FolderDetailScreen() {
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="document-text-outline" size={40} color={colors.textMuted} />
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>Nenhum artigo nesta pasta</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>Nenhum artigo nesta estante</Text>
           </View>
         }
       />
@@ -205,8 +213,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm, borderRadius: radius.lg,
     padding: spacing.lg, borderWidth: 1,
   },
-  articleLeft: { marginRight: spacing.md, paddingTop: 6 },
-  readDot: { width: 8, height: 8, borderRadius: 4 },
+  articleThumb: {
+    width: 56, height: 56, borderRadius: radius.sm,
+    marginRight: spacing.md,
+  },
+  articleThumbPlaceholder: {
+    width: 56, height: 56, borderRadius: radius.sm,
+    marginRight: spacing.md,
+    justifyContent: 'center', alignItems: 'center',
+  },
   articleBody: { flex: 1 },
   articleTitle: { ...typography.subheading, marginBottom: 4 },
   articleMeta: { ...typography.caption },

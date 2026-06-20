@@ -110,6 +110,11 @@ export async function searchArticles(query: string): Promise<Article[]> {
   return rows.map(rowToArticle);
 }
 
+export async function updateArticleCover(id: string, coverImagePath: string): Promise<void> {
+  const db = getDatabase();
+  await db.runAsync('UPDATE articles SET cover_image_path = ? WHERE id = ?', [coverImagePath, id]);
+}
+
 export async function moveArticle(id: string, folderId: string | null): Promise<void> {
   const db = getDatabase();
   await db.runAsync('UPDATE articles SET folder_id = ? WHERE id = ?', [folderId, id]);

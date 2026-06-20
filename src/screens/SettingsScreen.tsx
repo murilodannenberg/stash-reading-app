@@ -23,7 +23,7 @@ export function SettingsScreen() {
           <Text style={styles.logoText}>S</Text>
         </View>
         <Text style={[styles.appName, { color: colors.text }]}>Stash</Text>
-        <Text style={[styles.appVersion, { color: colors.textMuted }]}>v0.2.0</Text>
+        <Text style={[styles.appVersion, { color: colors.textMuted }]}>v0.3.0</Text>
       </View>
 
       {/* Accent color */}

@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, FlatList, StyleSheet,
-  TouchableOpacity, ActivityIndicator,
+  TouchableOpacity, ActivityIndicator, Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -42,6 +42,17 @@ export function SearchScreen() {
       activeOpacity={0.7}
       onPress={() => navigation.navigate('Reader', { articleId: item.id })}
     >
+      {item.cover_image_path != null ? (
+        <Image
+          source={{ uri: item.cover_image_path }}
+          style={[styles.itemThumb, { backgroundColor: colors.inputBg }]}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={[styles.itemThumbPlaceholder, { backgroundColor: colors.inputBg }]}>
+          <Ionicons name="document-text-outline" size={20} color={colors.textMuted} />
+        </View>
+      )}
       <View style={styles.itemBody}>
         <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
         {item.author != null && <Text style={[styles.meta, { color: colors.textMuted }]}>{item.author}</Text>}
@@ -118,6 +129,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.lg, marginBottom: spacing.sm,
     borderWidth: 1,
+  },
+  itemThumb: {
+    width: 48, height: 48, borderRadius: radius.sm,
+    marginRight: spacing.md,
+  },
+  itemThumbPlaceholder: {
+    width: 48, height: 48, borderRadius: radius.sm,
+    marginRight: spacing.md,
+    justifyContent: 'center', alignItems: 'center',
   },
   itemBody: { flex: 1 },
   title: { ...typography.subheading, marginBottom: 4 },
