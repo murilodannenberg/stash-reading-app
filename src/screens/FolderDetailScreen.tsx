@@ -91,7 +91,7 @@ export function FolderDetailScreen() {
 
   const renderArticle = ({ item }: { item: Article }) => (
     <TouchableOpacity
-      style={[styles.articleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      style={[styles.articleCard, { backgroundColor: colors.background }]}
       activeOpacity={0.7}
       onPress={() => navigation.navigate('Reader', { articleId: item.id })}
       onLongPress={() => handleArticleActions(item)}
@@ -167,6 +167,9 @@ export function FolderDetailScreen() {
         keyExtractor={(a) => a.id}
         renderItem={renderArticle}
         contentContainerStyle={styles.articleList}
+        ItemSeparatorComponent={() => (
+          <View style={[styles.separator, { backgroundColor: colors.border }]} />
+        )}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="document-text-outline" size={40} color={colors.textMuted} />
@@ -207,11 +210,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', marginRight: spacing.sm,
   },
   folderName: { ...typography.caption, fontWeight: '500' },
-  articleList: { paddingHorizontal: spacing.lg, paddingBottom: 100 },
+  articleList: { paddingBottom: 100 },
+  separator: { height: 0.5, marginHorizontal: spacing.lg },
   articleCard: {
     flexDirection: 'row', alignItems: 'flex-start',
-    marginBottom: spacing.sm, borderRadius: radius.lg,
-    padding: spacing.lg, borderWidth: 1,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
   },
   articleThumb: {
     width: 56, height: 56, borderRadius: radius.sm,

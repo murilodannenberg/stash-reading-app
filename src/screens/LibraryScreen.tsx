@@ -150,7 +150,7 @@ export function LibraryScreen() {
 
   const renderArticle = ({ item }: { item: Article }) => (
     <TouchableOpacity
-      style={[styles.articleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      style={[styles.articleCard, { backgroundColor: colors.background }]}
       activeOpacity={0.7}
       onPress={() => navigation.navigate('Reader', { articleId: item.id })}
       onLongPress={() => handleArticleActions(item)}
@@ -297,6 +297,9 @@ export function LibraryScreen() {
         renderItem={renderArticle}
         ListHeaderComponent={ListHeader}
         contentContainerStyle={styles.list}
+        ItemSeparatorComponent={() => (
+          <View style={[styles.separator, { backgroundColor: colors.border }]} />
+        )}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
@@ -515,12 +518,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
 
+  separator: { height: 0.5, marginHorizontal: spacing.lg },
+
   // Articles
   articleCard: {
     flexDirection: 'row', alignItems: 'flex-start',
-    marginHorizontal: spacing.lg, marginBottom: spacing.sm,
-    borderRadius: radius.lg, padding: spacing.lg,
-    borderWidth: 1,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
   },
   articleThumb: {
     width: 56, height: 56, borderRadius: radius.sm,

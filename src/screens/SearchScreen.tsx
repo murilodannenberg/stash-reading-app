@@ -38,7 +38,7 @@ export function SearchScreen() {
 
   const renderItem = ({ item }: { item: Article }) => (
     <TouchableOpacity
-      style={[styles.item, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      style={[styles.item, { backgroundColor: colors.background }]}
       activeOpacity={0.7}
       onPress={() => navigation.navigate('Reader', { articleId: item.id })}
     >
@@ -94,6 +94,9 @@ export function SearchScreen() {
           keyExtractor={(a) => a.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
+          ItemSeparatorComponent={() => (
+            <View style={[styles.separator, { backgroundColor: colors.border }]} />
+          )}
           ListEmptyComponent={
             searched ? (
               <View style={styles.emptyWrap}>
@@ -123,12 +126,11 @@ const styles = StyleSheet.create({
   inputIcon: { marginRight: spacing.sm },
   input: { flex: 1, paddingVertical: spacing.sm, fontSize: 15 },
   loading: { marginTop: 40 },
-  list: { padding: spacing.lg },
+  list: { paddingTop: spacing.sm },
+  separator: { height: 0.5, marginHorizontal: spacing.lg },
   item: {
     flexDirection: 'row', alignItems: 'center',
-    borderRadius: radius.lg,
-    padding: spacing.lg, marginBottom: spacing.sm,
-    borderWidth: 1,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
   },
   itemThumb: {
     width: 48, height: 48, borderRadius: radius.sm,
