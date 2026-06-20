@@ -37,16 +37,24 @@ export function LibraryScreen() {
 
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
-  // Ícone de busca no header
+  // Botões de busca e adicionar artigo no header
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Search')}
-          style={{ paddingHorizontal: 12, paddingVertical: 6 }}
-        >
-          <Ionicons name="search-outline" size={22} color={accent} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Search')}
+            style={{ paddingHorizontal: 10, paddingVertical: 6 }}
+          >
+            <Ionicons name="search-outline" size={22} color={accent} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AddArticle', {})}
+            style={{ paddingHorizontal: 10, paddingVertical: 6 }}
+          >
+            <Ionicons name="add" size={26} color={accent} />
+          </TouchableOpacity>
+        </View>
       ),
     });
   }, [navigation, accent]);

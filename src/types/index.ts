@@ -101,7 +101,6 @@ export type RootStackParamList = {
 export type MainTabParamList = {
   Library: undefined;
   Highlights: undefined;
-  AddArticleTab: undefined;  // botão central — não navega para tela
   Shelves: undefined;
   Settings: undefined;
 };
