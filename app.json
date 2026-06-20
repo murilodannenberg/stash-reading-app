@@ -20,11 +20,12 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.stash.app"
+      "package": "com.stashinit"
     },
     "plugins": [
       "expo-sqlite",
-      "expo-document-picker"
+      "expo-document-picker",
+      "expo-web-browser"
     ]
   }
 }
