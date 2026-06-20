@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   itemBody: { flex: 1 },
-  title: { ...typography.subheading, marginBottom: 4 },
+  title: { ...typography.title, marginBottom: 4 },
   meta: { ...typography.caption },
   emptyWrap: { alignItems: 'center', marginTop: 80 },
   empty: { ...typography.body, marginTop: spacing.md },

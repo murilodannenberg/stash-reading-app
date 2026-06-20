@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   articleBody: { flex: 1 },
-  articleTitle: { ...typography.subheading, marginBottom: 4 },
+  articleTitle: { ...typography.title, marginBottom: 4 },
   articleMeta: { ...typography.caption },
   articleActions: { marginLeft: spacing.sm, alignItems: 'center' },
   emptyWrap: { alignItems: 'center', marginTop: 60 },

@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   articleBody: { flex: 1 },
-  articleTitle: { ...typography.subheading, marginBottom: 4 },
+  articleTitle: { ...typography.title, marginBottom: 4 },
   articleMeta: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 },
   metaText: { ...typography.caption },
   excerpt: { ...typography.caption, lineHeight: 18 },
