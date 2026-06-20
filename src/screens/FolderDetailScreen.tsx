@@ -1,14 +1,16 @@
 import React, { useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet,
-  TouchableOpacity, Alert,
+  TouchableOpacity, Alert, Share,
 } from 'react-native';
 import { useRoute, useNavigation, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { useArticleStore } from '../stores/articleStore';
 import { useFolderStore } from '../stores/folderStore';
+import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { Article, Folder, RootStackParamList } from '../types';
-import { palette } from '../theme/colors';
+import { spacing, radius, typography } from '../theme/colors';
 
 type Route = RouteProp<RootStackParamList, 'FolderDetail'>;
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -18,7 +20,10 @@ export function FolderDetailScreen() {
   const navigation = useNavigation<Nav>();
   const { folderId } = route.params;
   const { articles, loadArticles, deleteArticle, toggleFavorite } = useArticleStore();
-  const { folders, loadFolders } = useFolderStore();
+  const { folders, loadFolders, deleteFolder } = useFolderStore();
+  const { prefs: appTheme } = useAppThemeStore();
+  const colors = getHomeColors(appTheme.homeTheme);
+  const accent = appTheme.accentColor;
 
   useFocusEffect(
     useCallback(() => {
@@ -27,111 +32,193 @@ export function FolderDetailScreen() {
     }, [folderId, loadArticles, loadFolders])
   );
 
-  const handleDeleteArticle = (article: Article) => {
-    Alert.alert(
-      'Remover artigo',
-      `Remover "${article.title}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Remover', style: 'destructive', onPress: () => deleteArticle(article.id) },
-      ]
-    );
+  const handleArticleActions = (article: Article) => {
+    Alert.alert(article.title, undefined, [
+      {
+        text: 'Compartilhar',
+        onPress: () => {
+          Share.share({
+            message: article.url
+              ? `${article.title}\n${article.url}`
+              : article.title,
+            title: article.title,
+          });
+        },
+      },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert('Remover artigo', `Remover "${article.title}"?`, [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Remover', style: 'destructive', onPress: () => deleteArticle(article.id) },
+          ]);
+        },
+      },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  };
+
+  const handleFolderActions = (folder: Folder) => {
+    Alert.alert(folder.name, undefined, [
+      {
+        text: 'Excluir pasta',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert('Remover pasta', `Remover "${folder.name}" e todo seu conteudo?`, [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Remover', style: 'destructive', onPress: () => deleteFolder(folder.id) },
+          ]);
+        },
+      },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
   };
 
   const renderSubfolder = ({ item }: { item: Folder }) => (
     <TouchableOpacity
-      style={styles.folderItem}
+      style={[styles.folderCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      activeOpacity={0.7}
       onPress={() => navigation.navigate('FolderDetail', { folderId: item.id, folderName: item.name })}
+      onLongPress={() => handleFolderActions(item)}
     >
-      <Text style={styles.folderIcon}>📁</Text>
-      <Text style={styles.folderName}>{item.name}</Text>
+      <View style={[styles.folderIconWrap, { backgroundColor: accent + '18' }]}>
+        <Ionicons name="folder" size={18} color={accent} />
+      </View>
+      <Text style={[styles.folderName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
     </TouchableOpacity>
   );
 
   const renderArticle = ({ item }: { item: Article }) => (
     <TouchableOpacity
-      style={[styles.articleItem, item.is_read && styles.articleRead]}
+      style={[styles.articleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      activeOpacity={0.7}
       onPress={() => navigation.navigate('Reader', { articleId: item.id })}
-      onLongPress={() => handleDeleteArticle(item)}
+      onLongPress={() => handleArticleActions(item)}
     >
-      <View style={styles.articleContent}>
-        <Text style={styles.articleTitle} numberOfLines={2}>{item.title}</Text>
-        {item.author != null && <Text style={styles.articleMeta}>{item.author}</Text>}
+      <View style={styles.articleLeft}>
+        <View style={[styles.readDot, { backgroundColor: accent }, item.is_read && { backgroundColor: colors.border }]} />
       </View>
-      <TouchableOpacity onPress={() => toggleFavorite(item.id)}>
-        <Text style={styles.favoriteIcon}>{item.is_favorite ? '★' : '☆'}</Text>
-      </TouchableOpacity>
+      <View style={styles.articleBody}>
+        <Text
+          style={[styles.articleTitle, { color: colors.text }, item.is_read && { color: colors.textSecondary, fontWeight: '400' }]}
+          numberOfLines={2}
+        >
+          {item.title}
+        </Text>
+        {item.author != null && <Text style={[styles.articleMeta, { color: colors.textMuted }]}>{item.author}</Text>}
+        {item.reading_time_min != null && (
+          <Text style={[styles.articleMeta, { color: colors.textMuted }]}>{item.reading_time_min} min</Text>
+        )}
+      </View>
+      <View style={styles.articleActions}>
+        <TouchableOpacity
+          onPress={() => toggleFavorite(item.id)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons
+            name={item.is_favorite ? 'bookmark' : 'bookmark-outline'}
+            size={20}
+            color={item.is_favorite ? accent : colors.textMuted}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => {
+            Share.share({
+              message: item.url ? `${item.title}\n${item.url}` : item.title,
+              title: item.title,
+            });
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{ marginTop: spacing.sm }}
+        >
+          <Ionicons name="share-outline" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {folders.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Subpastas</Text>
+        <View style={styles.section}>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Subpastas</Text>
           <FlatList
             data={folders}
             keyExtractor={(f) => f.id}
             renderItem={renderSubfolder}
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.folderList}
+            contentContainerStyle={styles.folderRow}
           />
-        </>
+        </View>
       )}
-      <Text style={styles.sectionTitle}>Artigos</Text>
+      <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Artigos</Text>
       <FlatList
         data={articles}
         keyExtractor={(a) => a.id}
         renderItem={renderArticle}
         contentContainerStyle={styles.articleList}
-        ListEmptyComponent={<Text style={styles.empty}>Nenhum artigo nesta pasta.</Text>}
+        ListEmptyComponent={
+          <View style={styles.emptyWrap}>
+            <Ionicons name="document-text-outline" size={40} color={colors.textMuted} />
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>Nenhum artigo nesta pasta</Text>
+          </View>
+        }
       />
 
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { backgroundColor: accent, shadowColor: accent }]}
+        activeOpacity={0.8}
         onPress={() => navigation.navigate('AddArticle', { folderId })}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Ionicons name="add" size={26} color="#fff" />
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  sectionTitle: {
-    fontSize: 13, fontWeight: '600', color: '#6b7280',
-    marginTop: 16, marginBottom: 8, marginHorizontal: 16,
-    textTransform: 'uppercase', letterSpacing: 0.5,
+  container: { flex: 1 },
+  section: { marginTop: spacing.lg },
+  sectionLabel: {
+    ...typography.label,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.lg,
   },
-  folderList: { paddingHorizontal: 12 },
-  folderItem: {
+  folderRow: { paddingHorizontal: spacing.md },
+  folderCard: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 10, padding: 10,
-    marginHorizontal: 4,
-    borderWidth: 1, borderColor: '#e5e7eb',
+    borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md,
+    marginHorizontal: spacing.xs,
+    borderWidth: 1,
   },
-  folderIcon: { fontSize: 18, marginRight: 6 },
-  folderName: { fontSize: 13, fontWeight: '500', color: '#374151' },
-  articleList: { paddingHorizontal: 16, paddingBottom: 100 },
-  articleItem: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 14,
-    marginBottom: 10, flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: '#e5e7eb',
+  folderIconWrap: {
+    width: 28, height: 28, borderRadius: radius.sm,
+    justifyContent: 'center', alignItems: 'center', marginRight: spacing.sm,
   },
-  articleRead: { opacity: 0.6 },
-  articleContent: { flex: 1 },
-  articleTitle: { fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 4 },
-  articleMeta: { fontSize: 12, color: '#6b7280' },
-  favoriteIcon: { fontSize: 20, color: palette.accent, padding: 4 },
+  folderName: { ...typography.caption, fontWeight: '500' },
+  articleList: { paddingHorizontal: spacing.lg, paddingBottom: 100 },
+  articleCard: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    marginBottom: spacing.sm, borderRadius: radius.lg,
+    padding: spacing.lg, borderWidth: 1,
+  },
+  articleLeft: { marginRight: spacing.md, paddingTop: 6 },
+  readDot: { width: 8, height: 8, borderRadius: 4 },
+  articleBody: { flex: 1 },
+  articleTitle: { ...typography.subheading, marginBottom: 4 },
+  articleMeta: { ...typography.caption },
+  articleActions: { marginLeft: spacing.sm, alignItems: 'center' },
+  emptyWrap: { alignItems: 'center', marginTop: 60 },
+  emptyText: { ...typography.body, marginTop: spacing.md },
   fab: {
-    position: 'absolute', bottom: 24, right: 16,
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: palette.primary,
+    position: 'absolute', bottom: 24, right: spacing.lg,
+    width: 54, height: 54, borderRadius: 27,
     justifyContent: 'center', alignItems: 'center',
-    elevation: 4,
+    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8,
   },
-  fabText: { fontSize: 28, color: '#fff', lineHeight: 32 },
-  empty: { textAlign: 'center', color: '#9ca3af', fontSize: 15, marginTop: 40 },
 });

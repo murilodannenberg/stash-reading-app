@@ -1,11 +1,14 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   TextInput, Modal, Pressable, Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTagStore } from '../stores/tagStore';
+import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { Tag } from '../types';
-import { palette } from '../theme/colors';
+import { palette, spacing, radius, typography } from '../theme/colors';
 
 const TAG_COLORS = [
   '#6366f1', '#ec4899', '#f59e0b', '#10b981',
@@ -14,11 +17,14 @@ const TAG_COLORS = [
 
 export function TagsScreen() {
   const { tags, loadTags, createTag, deleteTag } = useTagStore();
+  const { prefs: appTheme } = useAppThemeStore();
+  const colors = getHomeColors(appTheme.homeTheme);
+  const accent = appTheme.accentColor;
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [selectedColor, setSelectedColor] = useState(TAG_COLORS[0]);
 
-  useEffect(() => { loadTags(); }, [loadTags]);
+  useFocusEffect(useCallback(() => { loadTags(); }, [loadTags]));
 
   const handleCreate = useCallback(async () => {
     if (!name.trim()) return;
@@ -31,7 +37,7 @@ export function TagsScreen() {
   const handleDelete = useCallback((tag: Tag) => {
     Alert.alert(
       'Remover tag',
-      `Remover a tag "${tag.name}"? Ela será desvinculada de todos os itens.`,
+      `Remover a tag "${tag.name}"? Ela sera desvinculada de todos os itens.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Remover', style: 'destructive', onPress: () => deleteTag(tag.id) },
@@ -41,16 +47,17 @@ export function TagsScreen() {
 
   const renderTag = ({ item }: { item: Tag }) => (
     <TouchableOpacity
-      style={[styles.tag, { borderColor: item.color }]}
+      style={[styles.tag, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      activeOpacity={0.7}
       onLongPress={() => handleDelete(item)}
     >
       <View style={[styles.tagDot, { backgroundColor: item.color }]} />
-      <Text style={styles.tagName}>{item.name}</Text>
+      <Text style={[styles.tagName, { color: colors.text }]}>{item.name}</Text>
     </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={tags}
         keyExtractor={(t) => t.id}
@@ -59,46 +66,59 @@ export function TagsScreen() {
         contentContainerStyle={styles.list}
         columnWrapperStyle={styles.row}
         ListEmptyComponent={
-          <Text style={styles.empty}>
-            Nenhuma tag.{'\n'}Toque em + para criar.
-          </Text>
+          <View style={styles.emptyWrap}>
+            <Ionicons name="pricetags-outline" size={48} color={colors.textMuted} />
+            <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>Nenhuma tag</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Toque no + para criar</Text>
+          </View>
         }
       />
 
-      <TouchableOpacity style={styles.fab} onPress={() => setShowModal(true)}>
-        <Text style={styles.fabText}>+</Text>
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: accent, shadowColor: accent }]}
+        activeOpacity={0.8}
+        onPress={() => setShowModal(true)}
+      >
+        <Ionicons name="add" size={26} color="#fff" />
       </TouchableOpacity>
 
       <Modal visible={showModal} transparent animationType="fade">
         <Pressable style={styles.overlay} onPress={() => setShowModal(false)}>
-          <Pressable style={styles.modal}>
-            <Text style={styles.modalTitle}>Nova tag</Text>
+          <Pressable style={[styles.modal, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Nova tag</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { borderColor: colors.border, color: colors.text }]}
               placeholder="Nome da tag"
+              placeholderTextColor={colors.textMuted}
               value={name}
               onChangeText={setName}
               autoFocus
             />
-            <Text style={styles.colorLabel}>Cor</Text>
+            <Text style={[styles.colorLabel, { color: colors.textSecondary }]}>Cor</Text>
             <View style={styles.colorRow}>
               {TAG_COLORS.map((c) => (
                 <TouchableOpacity
                   key={c}
-                  style={[
-                    styles.colorSwatch,
-                    { backgroundColor: c },
-                    selectedColor === c && styles.colorSelected,
-                  ]}
+                  style={[styles.colorSwatch, { backgroundColor: c }]}
                   onPress={() => setSelectedColor(c)}
-                />
+                >
+                  {selectedColor === c && (
+                    <Ionicons name="checkmark" size={16} color="#fff" />
+                  )}
+                </TouchableOpacity>
               ))}
             </View>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
-                <Text style={styles.cancelText}>Cancelar</Text>
+            <View style={styles.modalBtns}>
+              <TouchableOpacity
+                style={styles.modalBtnCancel}
+                onPress={() => setShowModal(false)}
+              >
+                <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleCreate}>
+              <TouchableOpacity
+                style={[styles.modalBtnConfirm, { backgroundColor: accent }]}
+                onPress={handleCreate}
+              >
                 <Text style={styles.confirmText}>Criar</Text>
               </TouchableOpacity>
             </View>
@@ -110,43 +130,54 @@ export function TagsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  list: { padding: 16, paddingBottom: 100 },
-  row: { gap: 12 },
+  container: { flex: 1 },
+  list: { padding: spacing.lg, paddingBottom: 100 },
+  row: { gap: spacing.sm },
   tag: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 12, padding: 14,
-    marginBottom: 12, borderWidth: 2,
+    borderRadius: radius.lg,
+    padding: spacing.lg, marginBottom: spacing.sm,
+    borderWidth: 1,
   },
-  tagDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
-  tagName: { fontSize: 14, fontWeight: '600', color: '#374151' },
-  empty: { textAlign: 'center', color: '#9ca3af', fontSize: 15, marginTop: 60, lineHeight: 24 },
+  tagDot: { width: 10, height: 10, borderRadius: 5, marginRight: spacing.sm },
+  tagName: { ...typography.subheading },
+  emptyWrap: { alignItems: 'center', marginTop: 80 },
+  emptyTitle: { ...typography.heading, marginTop: spacing.lg },
+  emptySubtitle: { ...typography.body, marginTop: spacing.xs },
   fab: {
-    position: 'absolute', bottom: 24, right: 16,
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: palette.primary,
+    position: 'absolute', bottom: 24, right: spacing.lg,
+    width: 54, height: 54, borderRadius: 27,
     justifyContent: 'center', alignItems: 'center',
-    elevation: 4,
+    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8,
   },
-  fabText: { fontSize: 28, color: '#fff', lineHeight: 32 },
   overlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center', alignItems: 'center',
   },
   modal: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 24,
-    width: 300, elevation: 8,
+    borderRadius: radius.xl,
+    padding: spacing['2xl'], width: 300, elevation: 8,
   },
-  modalTitle: { fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 16 },
+  modalTitle: { ...typography.heading, marginBottom: spacing.lg },
   input: {
-    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8,
-    padding: 10, fontSize: 15, color: '#111827', marginBottom: 16,
+    borderWidth: 1, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    fontSize: 15, marginBottom: spacing.lg,
   },
-  colorLabel: { fontSize: 13, color: '#6b7280', marginBottom: 10 },
-  colorRow: { flexDirection: 'row', gap: 10, marginBottom: 20, flexWrap: 'wrap' },
-  colorSwatch: { width: 28, height: 28, borderRadius: 14 },
-  colorSelected: { borderWidth: 3, borderColor: '#111827' },
-  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16 },
-  cancelText: { fontSize: 15, color: '#6b7280' },
-  confirmText: { fontSize: 15, color: palette.primary, fontWeight: '600' },
+  colorLabel: { ...typography.caption, fontWeight: '600', marginBottom: spacing.sm },
+  colorRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xl, flexWrap: 'wrap' },
+  colorSwatch: {
+    width: 32, height: 32, borderRadius: 16,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm },
+  modalBtnCancel: { paddingVertical: spacing.sm, paddingHorizontal: spacing.lg },
+  cancelText: { ...typography.body },
+  modalBtnConfirm: {
+    paddingVertical: spacing.sm, paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+  },
+  confirmText: { ...typography.body, color: '#fff', fontWeight: '600' },
 });

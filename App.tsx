@@ -7,15 +7,19 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { openDatabase } from './src/database/connection';
 import { runMigrations } from './src/database/migrations';
 import { AppNavigator } from './src/navigation';
+import { useAppThemeStore } from './src/stores/appThemeStore';
 import { palette } from './src/theme/colors';
 
 export default function App() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const hydrateTheme = useAppThemeStore((s) => s._hydrate);
+
   useEffect(() => {
     async function init() {
       try {
+        hydrateTheme();
         const db = await openDatabase();
         await runMigrations(db);
         setReady(true);
@@ -24,7 +28,7 @@ export default function App() {
       }
     }
     init();
-  }, []);
+  }, [hydrateTheme]);
 
   if (error) {
     return (

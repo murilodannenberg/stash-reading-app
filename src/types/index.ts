@@ -80,6 +80,13 @@ export interface ReadingPreferences {
   lineHeight: number;
 }
 
+// ─── App Theme Preferences (MMKV) ─────────────────────────────────────────
+
+export interface AppThemePreferences {
+  accentColor: string;
+  homeTheme: string;
+}
+
 // ─── Navigation ────────────────────────────────────────────────────────────
 
 export type RootStackParamList = {
@@ -95,4 +102,5 @@ export type MainTabParamList = {
   Library: undefined;
   Search: undefined;
   Tags: undefined;
+  Settings: undefined;
 };

@@ -114,3 +114,15 @@ export async function moveArticle(id: string, folderId: string | null): Promise<
   const db = getDatabase();
   await db.runAsync('UPDATE articles SET folder_id = ? WHERE id = ?', [folderId, id]);
 }
+
+export async function getArticlesByTag(tagId: string): Promise<Article[]> {
+  const db = getDatabase();
+  const rows = await db.getAllAsync<Record<string, unknown>>(
+    `SELECT a.* FROM articles a
+     JOIN article_tags at ON at.article_id = a.id
+     WHERE at.tag_id = ? AND a.deleted_at IS NULL
+     ORDER BY a.updated_at DESC`,
+    [tagId]
+  );
+  return rows.map(rowToArticle);
+}

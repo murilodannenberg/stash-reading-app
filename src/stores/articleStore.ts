@@ -12,6 +12,7 @@ interface ArticleState {
   markAsRead: (id: string, isRead: boolean) => Promise<void>;
   toggleFavorite: (id: string) => Promise<void>;
   searchArticles: (query: string) => Promise<Article[]>;
+  loadArticlesByTag: (tagId: string) => Promise<void>;
 }
 
 export const useArticleStore = create<ArticleState>((set, get) => ({
@@ -66,5 +67,15 @@ export const useArticleStore = create<ArticleState>((set, get) => ({
 
   searchArticles: async (query) => {
     return db.searchArticles(query);
+  },
+
+  loadArticlesByTag: async (tagId) => {
+    set({ loading: true });
+    try {
+      const articles = await db.getArticlesByTag(tagId);
+      set({ articles });
+    } finally {
+      set({ loading: false });
+    }
   },
 }));

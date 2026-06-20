@@ -5,10 +5,12 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { createArticle } from '../database';
 import { fetchAndParse } from '../services/articleParser';
+import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { RootStackParamList } from '../types';
-import { palette } from '../theme/colors';
+import { spacing, radius, typography } from '../theme/colors';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'AddArticle'>;
@@ -21,11 +23,14 @@ export function AddArticleScreen() {
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
+  const { prefs: appTheme } = useAppThemeStore();
+  const colors = getHomeColors(appTheme.homeTheme);
+  const accent = appTheme.accentColor;
   const [mode, setMode] = useState<'url' | 'manual'>('url');
 
   const handleSaveManual = useCallback(async () => {
     if (!title.trim()) {
-      Alert.alert('Título obrigatório', 'Informe um título para o artigo.');
+      Alert.alert('Titulo obrigatorio', 'Informe um titulo para o artigo.');
       return;
     }
     setLoading(true);
@@ -42,8 +47,8 @@ export function AddArticleScreen() {
         folder_id: folderId,
       });
       navigation.goBack();
-    } catch (e) {
-      Alert.alert('Erro', 'Não foi possível salvar o artigo.');
+    } catch {
+      Alert.alert('Erro', 'Nao foi possivel salvar o artigo.');
     } finally {
       setLoading(false);
     }
@@ -52,11 +57,11 @@ export function AddArticleScreen() {
   const handleSaveUrl = useCallback(async () => {
     const trimmed = url.trim();
     if (!trimmed) {
-      Alert.alert('URL obrigatória', 'Informe uma URL válida.');
+      Alert.alert('URL obrigatoria', 'Informe uma URL valida.');
       return;
     }
     if (!/^https?:\/\/.+/i.test(trimmed)) {
-      Alert.alert('URL inválida', 'A URL deve começar com http:// ou https://');
+      Alert.alert('URL invalida', 'A URL deve comecar com http:// ou https://');
       return;
     }
     setLoading(true);
@@ -83,21 +88,36 @@ export function AddArticleScreen() {
   }, [url, folderId, navigation]);
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.modeRow}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} keyboardShouldPersistTaps="handled">
+      {/* Mode toggle */}
+      <View style={[styles.toggleRow, { backgroundColor: colors.inputBg }]}>
         <TouchableOpacity
-          style={[styles.modeBtn, mode === 'url' && styles.modeBtnActive]}
+          style={[styles.toggleBtn, mode === 'url' && [styles.toggleBtnActive, { backgroundColor: colors.surface }]]}
           onPress={() => setMode('url')}
+          activeOpacity={0.7}
         >
-          <Text style={[styles.modeBtnText, mode === 'url' && styles.modeBtnTextActive]}>
+          <Ionicons
+            name="link-outline"
+            size={16}
+            color={mode === 'url' ? accent : colors.textMuted}
+            style={styles.toggleIcon}
+          />
+          <Text style={[styles.toggleText, { color: colors.textMuted }, mode === 'url' && { color: accent }]}>
             Por URL
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.modeBtn, mode === 'manual' && styles.modeBtnActive]}
+          style={[styles.toggleBtn, mode === 'manual' && [styles.toggleBtnActive, { backgroundColor: colors.surface }]]}
           onPress={() => setMode('manual')}
+          activeOpacity={0.7}
         >
-          <Text style={[styles.modeBtnText, mode === 'manual' && styles.modeBtnTextActive]}>
+          <Ionicons
+            name="create-outline"
+            size={16}
+            color={mode === 'manual' ? accent : colors.textMuted}
+            style={styles.toggleIcon}
+          />
+          <Text style={[styles.toggleText, { color: colors.textMuted }, mode === 'manual' && { color: accent }]}>
             Manual
           </Text>
         </TouchableOpacity>
@@ -106,53 +126,65 @@ export function AddArticleScreen() {
       <View style={styles.form}>
         {mode === 'url' ? (
           <>
-            <Text style={styles.label}>URL do artigo</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>URL do artigo</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="https://..."
+              placeholderTextColor={colors.textMuted}
               value={url}
               onChangeText={setUrl}
               autoCapitalize="none"
               keyboardType="url"
               autoFocus
             />
-            <Text style={styles.hint}>
-              O conteúdo será baixado e salvo localmente para leitura offline.
-            </Text>
+            <View style={styles.hintRow}>
+              <Ionicons name="cloud-download-outline" size={14} color={colors.textMuted} />
+              <Text style={[styles.hintText, { color: colors.textMuted }]}>
+                O conteudo sera baixado e salvo localmente para leitura offline.
+              </Text>
+            </View>
             <TouchableOpacity
-              style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
+              style={[styles.saveBtn, { backgroundColor: accent }, loading && styles.saveBtnDisabled]}
               onPress={handleSaveUrl}
               disabled={loading}
+              activeOpacity={0.8}
             >
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.saveBtnText}>Salvar artigo</Text>
-              }
+              {loading ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator color="#fff" size="small" />
+                  <Text style={styles.saveBtnText}>  Baixando...</Text>
+                </View>
+              ) : (
+                <Text style={styles.saveBtnText}>Salvar artigo</Text>
+              )}
             </TouchableOpacity>
           </>
         ) : (
           <>
-            <Text style={styles.label}>Título *</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Titulo *</Text>
             <TextInput
-              style={styles.input}
-              placeholder="Título do artigo"
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+              placeholder="Titulo do artigo"
+              placeholderTextColor={colors.textMuted}
               value={title}
               onChangeText={setTitle}
               autoFocus
             />
-            <Text style={styles.label}>URL (opcional)</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>URL (opcional)</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="https://..."
+              placeholderTextColor={colors.textMuted}
               value={url}
               onChangeText={setUrl}
               autoCapitalize="none"
               keyboardType="url"
             />
             <TouchableOpacity
-              style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
+              style={[styles.saveBtn, { backgroundColor: accent }, loading && styles.saveBtnDisabled]}
               onPress={handleSaveManual}
               disabled={loading}
+              activeOpacity={0.8}
             >
               {loading
                 ? <ActivityIndicator color="#fff" />
@@ -167,29 +199,35 @@ export function AddArticleScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  modeRow: {
-    flexDirection: 'row', margin: 16, gap: 8,
-    backgroundColor: '#e5e7eb', borderRadius: 10, padding: 3,
+  container: { flex: 1 },
+  toggleRow: {
+    flexDirection: 'row', margin: spacing.lg, gap: spacing.xs,
+    borderRadius: radius.md, padding: 3,
   },
-  modeBtn: {
-    flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center',
+  toggleBtn: {
+    flex: 1, flexDirection: 'row',
+    paddingVertical: 10, borderRadius: radius.sm,
+    alignItems: 'center', justifyContent: 'center',
   },
-  modeBtnActive: { backgroundColor: '#fff' },
-  modeBtnText: { fontSize: 14, fontWeight: '500', color: '#6b7280' },
-  modeBtnTextActive: { color: '#111827' },
-  form: { paddingHorizontal: 16 },
-  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 4 },
+  toggleBtnActive: { elevation: 1, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4 },
+  toggleIcon: { marginRight: 6 },
+  toggleText: { ...typography.subheading },
+  form: { paddingHorizontal: spacing.lg },
+  label: { ...typography.caption, fontWeight: '600', marginBottom: 6, marginTop: spacing.xs },
   input: {
-    backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb',
-    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: '#111827', marginBottom: 16,
+    borderWidth: 1,
+    borderRadius: radius.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
+    fontSize: 15, marginBottom: spacing.lg,
   },
-  hint: { fontSize: 13, color: '#6b7280', marginBottom: 20, lineHeight: 18 },
+  hintRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.xl,
+  },
+  hintText: { ...typography.caption, flex: 1 },
   saveBtn: {
-    backgroundColor: palette.primary, borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center', marginTop: 8,
+    borderRadius: radius.lg,
+    paddingVertical: 14, alignItems: 'center', marginTop: spacing.sm,
   },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
 });

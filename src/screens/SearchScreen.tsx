@@ -5,15 +5,20 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { useArticleStore } from '../stores/articleStore';
+import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { Article, RootStackParamList } from '../types';
-import { palette } from '../theme/colors';
+import { spacing, radius, typography } from '../theme/colors';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function SearchScreen() {
   const navigation = useNavigation<Nav>();
   const { searchArticles } = useArticleStore();
+  const { prefs: appTheme } = useAppThemeStore();
+  const colors = getHomeColors(appTheme.homeTheme);
+  const accent = appTheme.accentColor;
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Article[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,33 +38,45 @@ export function SearchScreen() {
 
   const renderItem = ({ item }: { item: Article }) => (
     <TouchableOpacity
-      style={styles.item}
+      style={[styles.item, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      activeOpacity={0.7}
       onPress={() => navigation.navigate('Reader', { articleId: item.id })}
     >
-      <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-      {item.author != null && <Text style={styles.meta}>{item.author}</Text>}
+      <View style={styles.itemBody}>
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
+        {item.author != null && <Text style={[styles.meta, { color: colors.textMuted }]}>{item.author}</Text>}
+        {item.reading_time_min != null && (
+          <Text style={[styles.meta, { color: colors.textMuted }]}>{item.reading_time_min} min de leitura</Text>
+        )}
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
     </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="Buscar artigos..."
-          value={query}
-          onChangeText={setQuery}
-          returnKeyType="search"
-          onSubmitEditing={handleSearch}
-          autoFocus
-        />
-        <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-          <Text style={styles.searchBtnText}>Buscar</Text>
-        </TouchableOpacity>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.searchRow, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <View style={[styles.inputWrap, { backgroundColor: colors.inputBg }]}>
+          <Ionicons name="search" size={18} color={colors.textMuted} style={styles.inputIcon} />
+          <TextInput
+            style={[styles.input, { color: colors.text }]}
+            placeholder="Buscar artigos..."
+            placeholderTextColor={colors.textMuted}
+            value={query}
+            onChangeText={setQuery}
+            returnKeyType="search"
+            onSubmitEditing={handleSearch}
+          />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => { setQuery(''); setResults([]); setSearched(false); }}>
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {loading ? (
-        <ActivityIndicator style={styles.loading} color={palette.primary} />
+        <ActivityIndicator style={styles.loading} color={accent} />
       ) : (
         <FlatList
           data={results}
@@ -68,8 +85,16 @@ export function SearchScreen() {
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             searched ? (
-              <Text style={styles.empty}>Nenhum resultado para "{query}"</Text>
-            ) : null
+              <View style={styles.emptyWrap}>
+                <Ionicons name="search-outline" size={40} color={colors.textMuted} />
+                <Text style={[styles.empty, { color: colors.textMuted }]}>Nenhum resultado para "{query}"</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyWrap}>
+                <Ionicons name="search-outline" size={48} color={colors.border} />
+                <Text style={[styles.emptyHint, { color: colors.textMuted }]}>Busca por titulo, autor ou conteudo</Text>
+              </View>
+            )
           }
         />
       )}
@@ -78,27 +103,26 @@ export function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  searchRow: {
-    flexDirection: 'row', padding: 16, gap: 8,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb',
+  container: { flex: 1 },
+  searchRow: { padding: spacing.lg, borderBottomWidth: 1 },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: radius.md, paddingHorizontal: spacing.md,
   },
-  input: {
-    flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 8, fontSize: 15, color: '#111827',
-  },
-  searchBtn: {
-    backgroundColor: palette.primary, borderRadius: 8,
-    paddingHorizontal: 14, justifyContent: 'center',
-  },
-  searchBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  inputIcon: { marginRight: spacing.sm },
+  input: { flex: 1, paddingVertical: spacing.sm, fontSize: 15 },
   loading: { marginTop: 40 },
-  list: { padding: 16 },
+  list: { padding: spacing.lg },
   item: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10,
-    borderWidth: 1, borderColor: '#e5e7eb',
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: radius.lg,
+    padding: spacing.lg, marginBottom: spacing.sm,
+    borderWidth: 1,
   },
-  title: { fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 4 },
-  meta: { fontSize: 12, color: '#6b7280' },
-  empty: { textAlign: 'center', color: '#9ca3af', fontSize: 15, marginTop: 40 },
+  itemBody: { flex: 1 },
+  title: { ...typography.subheading, marginBottom: 4 },
+  meta: { ...typography.caption },
+  emptyWrap: { alignItems: 'center', marginTop: 80 },
+  empty: { ...typography.body, marginTop: spacing.md },
+  emptyHint: { ...typography.body, marginTop: spacing.md },
 });
