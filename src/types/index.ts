@@ -95,12 +95,13 @@ export type RootStackParamList = {
   FolderDetail: { folderId: string; folderName: string };
   TagDetail: { tagId: string; tagName: string };
   AddArticle: { folderId?: string };
-  Settings: undefined;
+  Search: undefined;
 };
 
 export type MainTabParamList = {
   Library: undefined;
-  Search: undefined;
-  Tags: undefined;
+  Highlights: undefined;
+  AddArticleTab: undefined;  // botão central — não navega para tela
+  Shelves: undefined;
   Settings: undefined;
 };

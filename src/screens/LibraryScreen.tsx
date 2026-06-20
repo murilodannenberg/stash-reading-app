@@ -6,11 +6,10 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { useFolderStore } from '../stores/folderStore';
 import { useArticleStore } from '../stores/articleStore';
 import { useTagStore } from '../stores/tagStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
-import { RootStackParamList, Article, Folder, Tag } from '../types';
+import { RootStackParamList, Article, Tag } from '../types';
 import { spacing, radius, typography } from '../theme/colors';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -25,15 +24,12 @@ const FILTERS: { key: StatusFilter; label: string; icon: string }[] = [
 
 export function LibraryScreen() {
   const navigation = useNavigation<Nav>();
-  const { folders, loadFolders, createFolder, deleteFolder } = useFolderStore();
   const { articles, loadArticles, loadArticlesByTag, deleteArticle, toggleFavorite } = useArticleStore();
   const { tags, loadTags } = useTagStore();
   const { prefs: appTheme, _hydrate } = useAppThemeStore();
   const colors = getHomeColors(appTheme.homeTheme);
   const accent = appTheme.accentColor;
 
-  const [newFolderName, setNewFolderName] = useState('');
-  const [showFolderModal, setShowFolderModal] = useState(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -41,16 +37,29 @@ export function LibraryScreen() {
 
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
+  // Ícone de busca no header
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Search')}
+          style={{ paddingHorizontal: 12, paddingVertical: 6 }}
+        >
+          <Ionicons name="search-outline" size={22} color={accent} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, accent]);
+
   useFocusEffect(
     useCallback(() => {
-      loadFolders(null);
       loadTags();
       if (selectedTag) {
         loadArticlesByTag(selectedTag);
       } else {
         loadArticles(null);
       }
-    }, [loadFolders, loadArticles, loadTags, loadArticlesByTag, selectedTag])
+    }, [loadArticles, loadTags, loadArticlesByTag, selectedTag])
   );
 
   const handleTagFilter = useCallback((tagId: string) => {
@@ -95,13 +104,6 @@ export function LibraryScreen() {
     loadArticles(null);
   }, [loadArticles]);
 
-  const handleCreateFolder = useCallback(async () => {
-    if (!newFolderName.trim()) return;
-    await createFolder(newFolderName.trim());
-    setNewFolderName('');
-    setShowFolderModal(false);
-  }, [newFolderName, createFolder]);
-
   const handleArticleActions = useCallback((article: Article) => {
     Alert.alert(article.title, undefined, [
       {
@@ -129,22 +131,6 @@ export function LibraryScreen() {
     ]);
   }, [deleteArticle]);
 
-  const handleFolderActions = useCallback((folder: Folder) => {
-    Alert.alert(folder.name, undefined, [
-      {
-        text: 'Excluir estante',
-        style: 'destructive',
-        onPress: () => {
-          Alert.alert('Remover estante', `Remover "${folder.name}" e todo seu conteudo?`, [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Remover', style: 'destructive', onPress: () => deleteFolder(folder.id) },
-          ]);
-        },
-      },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
-  }, [deleteFolder]);
-
   const handleShareArticle = useCallback((article: Article) => {
     Share.share({
       message: article.url
@@ -153,20 +139,6 @@ export function LibraryScreen() {
       title: article.title,
     });
   }, []);
-
-  const renderFolder = ({ item }: { item: Folder }) => (
-    <TouchableOpacity
-      style={[styles.folderCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      activeOpacity={0.7}
-      onPress={() => navigation.navigate('FolderDetail', { folderId: item.id, folderName: item.name })}
-      onLongPress={() => handleFolderActions(item)}
-    >
-      <View style={[styles.folderIconWrap, { backgroundColor: accent + '18' }]}>
-        <Ionicons name="library-outline" size={20} color={accent} />
-      </View>
-      <Text style={[styles.folderName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-    </TouchableOpacity>
-  );
 
   const renderArticle = ({ item }: { item: Article }) => (
     <TouchableOpacity
@@ -295,21 +267,6 @@ export function LibraryScreen() {
         />
       </View>
 
-      {/* Shelves */}
-      {folders.length > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Estantes</Text>
-          <FlatList
-            data={folders}
-            keyExtractor={(f) => f.id}
-            renderItem={renderFolder}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.folderRow}
-          />
-        </View>
-      )}
-
       {/* Articles header */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -349,23 +306,6 @@ export function LibraryScreen() {
         }
       />
 
-      {/* FAB */}
-      <View style={styles.fabRow}>
-        <TouchableOpacity
-          style={[styles.fabSmall, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          activeOpacity={0.8}
-          onPress={() => setShowFolderModal(true)}
-        >
-          <Ionicons name="library-outline" size={20} color={accent} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: accent, shadowColor: accent }]}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate('AddArticle', {})}
-        >
-          <Ionicons name="add" size={26} color="#fff" />
-        </TouchableOpacity>
-      </View>
 
       {/* Filter bottom sheet */}
       <Modal visible={showFilterSheet} transparent animationType="slide" onRequestClose={() => setShowFilterSheet(false)}>
@@ -478,38 +418,6 @@ export function LibraryScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* New folder modal */}
-      <Modal visible={showFolderModal} transparent animationType="fade">
-        <Pressable style={styles.overlay} onPress={() => setShowFolderModal(false)}>
-          <Pressable style={[styles.modal, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Nova estante</Text>
-            <TextInput
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.text }]}
-              placeholder="Nome da estante"
-              placeholderTextColor={colors.textMuted}
-              value={newFolderName}
-              onChangeText={setNewFolderName}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={handleCreateFolder}
-            />
-            <View style={styles.modalBtns}>
-              <TouchableOpacity
-                style={styles.modalBtnCancel}
-                onPress={() => setShowFolderModal(false)}
-              >
-                <Text style={[styles.modalBtnCancelText, { color: colors.textSecondary }]}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtnConfirm, { backgroundColor: accent }]}
-                onPress={handleCreateFolder}
-              >
-                <Text style={styles.modalBtnConfirmText}>Criar</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
@@ -599,20 +507,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
 
-  // Folders
-  folderRow: { paddingHorizontal: spacing.md },
-  folderCard: {
-    flexDirection: 'row', alignItems: 'center',
-    borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md,
-    marginHorizontal: spacing.xs,
-    borderWidth: 1, minWidth: 100,
-  },
-  folderIconWrap: {
-    width: 32, height: 32, borderRadius: radius.sm,
-    justifyContent: 'center', alignItems: 'center', marginRight: spacing.sm,
-  },
-  folderName: { ...typography.subheading, flexShrink: 1 },
-
   // Articles
   articleCard: {
     flexDirection: 'row', alignItems: 'flex-start',
@@ -641,49 +535,4 @@ const styles = StyleSheet.create({
   emptyTitle: { ...typography.heading, marginTop: spacing.lg },
   emptySubtitle: { ...typography.body, marginTop: spacing.xs },
 
-  // FABs
-  fabRow: {
-    position: 'absolute', bottom: 24, right: spacing.lg,
-    flexDirection: 'row', gap: spacing.md, alignItems: 'center',
-  },
-  fab: {
-    width: 54, height: 54, borderRadius: 27,
-    justifyContent: 'center', alignItems: 'center',
-    elevation: 6,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8,
-  },
-  fabSmall: {
-    width: 44, height: 44, borderRadius: 22,
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1.5,
-    elevation: 3,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1, shadowRadius: 4,
-  },
-
-  // Modal
-  overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  modal: {
-    borderRadius: radius.xl,
-    padding: spacing['2xl'], width: 300,
-    elevation: 8,
-  },
-  modalTitle: { ...typography.heading, marginBottom: spacing.lg },
-  modalInput: {
-    borderWidth: 1, borderRadius: radius.md,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    fontSize: 15, marginBottom: spacing.lg,
-  },
-  modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm },
-  modalBtnCancel: { paddingVertical: spacing.sm, paddingHorizontal: spacing.lg },
-  modalBtnCancelText: { ...typography.body },
-  modalBtnConfirm: {
-    paddingVertical: spacing.sm, paddingHorizontal: spacing.lg,
-    borderRadius: radius.md,
-  },
-  modalBtnConfirmText: { ...typography.body, color: '#fff', fontWeight: '600' },
 });
