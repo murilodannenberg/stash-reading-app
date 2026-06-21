@@ -14,6 +14,16 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       type: 'sourceFile',
     };
   }
+  // Force CJS build: Metro picks up the ESM `module` field instead of `main`
+  if (moduleName === '@tabler/icons-react-native') {
+    return {
+      filePath: path.resolve(
+        __dirname,
+        'node_modules/@tabler/icons-react-native/dist/cjs/tabler-icons-react-native.cjs'
+      ),
+      type: 'sourceFile',
+    };
+  }
   return context.resolveRequest(context, moduleName, platform);
 };
 
