@@ -27,6 +27,12 @@
       "expo-document-picker",
       "expo-web-browser",
       "expo-sharing"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "dc86d370-5ef7-46e4-9a1b-404235fe6dcb"
+      }
+    },
+    "owner": "murilodm"
   }
 }
