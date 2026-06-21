@@ -4,11 +4,11 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   IconBooks, IconBookmark, IconBookmarkFilled,
-  IconArchive, IconArchiveFilled, IconSettings, IconTags, IconHighlight,
+  IconArchive, IconArchiveFilled, IconSettings, IconTags, IconFolder,
 } from '@tabler/icons-react-native';
 
 import { LibraryScreen } from '../screens/LibraryScreen';
-import { HighlightsScreen } from '../screens/HighlightsScreen';
+import { FilesScreen } from '../screens/FilesScreen';
 import { ShelvesScreen } from '../screens/ShelvesScreen';
 import { TagsScreen } from '../screens/TagsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
@@ -27,11 +27,11 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 type TablerIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 
 const TAB_ICONS: Record<keyof MainTabParamList, { active: TablerIcon; inactive: TablerIcon }> = {
-  Library:    { active: IconBooks,          inactive: IconBooks },
-  Highlights: { active: IconHighlight,      inactive: IconHighlight },
-  Shelves:    { active: IconArchiveFilled,  inactive: IconArchive },
-  Tags:       { active: IconTags,           inactive: IconTags },
-  Settings:   { active: IconSettings,       inactive: IconSettings },
+  Library:  { active: IconBooks,           inactive: IconBooks },
+  Files:    { active: IconFolder,          inactive: IconFolder },
+  Shelves:  { active: IconArchiveFilled,   inactive: IconArchive },
+  Tags:     { active: IconTags,            inactive: IconTags },
+  Settings: { active: IconSettings,        inactive: IconSettings },
 };
 
 function MainTabs() {
@@ -73,9 +73,9 @@ function MainTabs() {
         options={{ title: 'Biblioteca', tabBarLabel: 'Biblioteca' }}
       />
       <Tab.Screen
-        name="Highlights"
-        component={HighlightsScreen}
-        options={{ title: 'Destaques', tabBarLabel: 'Destaques' }}
+        name="Files"
+        component={FilesScreen}
+        options={{ title: 'Arquivos', tabBarLabel: 'Arquivos' }}
       />
       <Tab.Screen
         name="Shelves"

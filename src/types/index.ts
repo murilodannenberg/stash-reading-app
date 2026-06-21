@@ -103,7 +103,7 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   Library: undefined;
-  Highlights: undefined;
+  Files: undefined;
   Shelves: undefined;
   Tags: undefined;
   Settings: undefined;
