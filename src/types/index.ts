@@ -100,7 +100,6 @@ export type RootStackParamList = {
   AddArticle: { folderId?: string; sharedUrl?: string };
   Search: undefined;
   Trash: undefined;
-  Files: undefined;
   Tags: undefined;
   Backup: undefined;
 };

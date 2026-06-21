@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
-  View, Text, StyleSheet,
+  View, Text, StyleSheet, Image,
   ActivityIndicator, TouchableOpacity, Modal, Share,
   Alert, TextInput, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
@@ -13,7 +13,7 @@ import {
 } from '@tabler/icons-react-native';
 import WebView from 'react-native-webview';
 import type { WebViewMessageEvent } from 'react-native-webview';
-import { File, Directory, Paths, readAsStringAsync, EncodingType } from 'expo-file-system';
+import { File, Directory, Paths } from 'expo-file-system';
 import { getArticleById, markAsRead, updateArticleContent } from '../database';
 import { Article, ReadingPreferences, RootStackParamList } from '../types';
 import { useReadingPrefsStore } from '../stores/readingPrefsStore';
@@ -45,7 +45,7 @@ function escHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function buildArticleHtml(article: Article, prefs: ReadingPreferences, accent: string, coverDataUrl?: string): string {
+function buildArticleHtml(article: Article, prefs: ReadingPreferences, accent: string): string {
   const fontCss = FONT_FAMILIES[prefs.fontFamily]?.value ?? 'sans-serif';
   const content = article.content_html
     || (article.content_text
@@ -57,9 +57,6 @@ function buildArticleHtml(article: Article, prefs: ReadingPreferences, accent: s
   ].filter(Boolean).join(' · ');
 
   const markerColors = MARKER_COLORS.map((m) => m.color);
-  const coverHtml = coverDataUrl
-    ? `<img class="cover" src="${coverDataUrl}" />`
-    : '';
 
   return `<!DOCTYPE html>
 <html><head>
@@ -115,7 +112,6 @@ li{margin-bottom:4px}
   margin-left:4px;font-size:18px;color:#fff;font-weight:300;line-height:1;}
 </style>
 </head><body>
-${coverHtml}
 <h1 class="title">${escHtml(article.title)}</h1>
 ${meta ? `<p class="meta">${meta}</p>` : ''}
 <hr>
@@ -223,7 +219,6 @@ export function ReaderScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editText, setEditText] = useState('');
   const [saving, setSaving] = useState(false);
-  const [coverDataUrl, setCoverDataUrl] = useState<string | undefined>(undefined);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const webViewRef = useRef<any>(null);
@@ -237,31 +232,21 @@ export function ReaderScreen() {
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
   useEffect(() => {
-    getArticleById(articleId).then(async (a) => {
+    getArticleById(articleId).then((a) => {
       setArticle(a);
       setLoading(false);
       if (a) {
         setIsFavorite(a.is_favorite);
         if (!a.is_read) markAsRead(articleId, true);
-        if (a.cover_image_path) {
-          try {
-            const ext = a.cover_image_path.split('.').pop()?.toLowerCase() ?? 'jpg';
-            const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-            const b64 = await readAsStringAsync(a.cover_image_path, { encoding: EncodingType.Base64 });
-            setCoverDataUrl(`data:${mime};base64,${b64}`);
-          } catch {
-            // cover not available locally, skip
-          }
-        }
       }
     });
     loadArticleHighlights(articleId);
   }, [articleId, loadArticleHighlights]);
 
   const articleSource = useMemo(
-    () => (article ? { html: buildArticleHtml(article, prefs, accent, coverDataUrl) } : null),
+    () => (article ? { html: buildArticleHtml(article, prefs, accent) } : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [article, coverDataUrl],
+    [article],
   );
 
   useEffect(() => {
@@ -469,6 +454,18 @@ export function ReaderScreen() {
         <View style={[styles.progressBar, { width: `${readProgress * 100}%`, backgroundColor: accent }]} />
       </View>
 
+      {/* Cover image — displayed natively so file:// URIs work on all Android versions */}
+      {article?.cover_image_path != null && (
+        <View style={styles.coverWrap}>
+          <Image
+            source={{ uri: article.cover_image_path }}
+            style={styles.coverImg}
+            resizeMode="cover"
+          />
+          <View style={[styles.coverScrim, { backgroundColor: prefs.backgroundColor }]} />
+        </View>
+      )}
+
       {/* @ts-ignore */}
       <WebView
         ref={webViewRef}
@@ -661,6 +658,9 @@ const styles = StyleSheet.create({
   backLink: { fontSize: 16, fontWeight: '600' },
   progressTrack: { height: 2, backgroundColor: 'transparent' },
   progressBar: { height: 2, borderRadius: 1 },
+  coverWrap: { width: '100%', height: 220, position: 'relative' },
+  coverImg: { width: '100%', height: '100%' },
+  coverScrim: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 48, opacity: 0.55 },
   toast: {
     position: 'absolute',
     top: 12,

@@ -9,7 +9,6 @@ import {
 
 import { LibraryScreen } from '../screens/LibraryScreen';
 import { SourcesScreen } from '../screens/SourcesScreen';
-import { FilesScreen } from '../screens/FilesScreen';
 import { ShelvesScreen } from '../screens/ShelvesScreen';
 import { TagsScreen } from '../screens/TagsScreen';
 import { HighlightsScreen } from '../screens/HighlightsScreen';
@@ -166,11 +165,6 @@ export function AppNavigator() {
           name="Trash"
           component={TrashScreen}
           options={{ title: 'Lixeira' }}
-        />
-        <Stack.Screen
-          name="Files"
-          component={FilesScreen}
-          options={{ title: 'Arquivos' }}
         />
         <Stack.Screen
           name="Tags"

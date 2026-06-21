@@ -295,43 +295,8 @@ export function LibraryScreen() {
 
   // ─── List header ───────────────────────────────────────────────────────────
 
-  const TagsRow = () => {
-    if (tags.length === 0) return null;
-    return (
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tagsRow}
-        style={[styles.tagsRowWrap, { borderBottomColor: colors.border }]}
-      >
-        {tags.map((tag: Tag) => {
-          const isActive = selectedTag === tag.id;
-          return (
-            <TouchableOpacity
-              key={tag.id}
-              style={[
-                styles.tagPill,
-                { backgroundColor: isActive ? tag.color + '20' : colors.inputBg },
-                isActive && { borderColor: tag.color, borderWidth: 1.5 },
-              ]}
-              onPress={() => handleTagFilter(tag.id)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.tagDot, { backgroundColor: tag.color }]} />
-              <Text style={[styles.tagPillText, { color: isActive ? tag.color : colors.textSecondary }, isActive && { fontWeight: '600' }]}>
-                {tag.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-    );
-  };
-
   const ListHeader = () => (
     <View>
-      {/* Tags row */}
-      <TagsRow />
       {/* Filter bar */}
       <View style={[styles.filterBar, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
@@ -638,16 +603,6 @@ export function LibraryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { paddingBottom: 100 },
-
-  // ── Tags row ────────────────────────────────────────────────────────────────
-  tagsRowWrap: { borderBottomWidth: 0.5 },
-  tagsRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.xs },
-  tagPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: spacing.md, paddingVertical: 6,
-    borderRadius: radius.full, borderWidth: 1, borderColor: 'transparent',
-  },
-  tagPillText: { fontSize: 13 },
 
   // ── Filter bar ──────────────────────────────────────────────────────────────
   filterBar: {
