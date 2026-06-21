@@ -275,24 +275,16 @@ export function LibraryScreen() {
           </Text>
         )}
       </View>
-      <View style={styles.articleActions}>
-        <TouchableOpacity
-          onPress={() => toggleFavorite(item.id)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          {item.is_favorite
-            ? <IconBookmarkFilled size={20} color={accent} />
-            : <IconBookmark size={20} color={colors.textMuted} strokeWidth={1.5} />
-          }
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => handleShareArticle(item)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={{ marginTop: spacing.sm }}
-        >
-          <IconShare2 size={18} color={colors.textMuted} strokeWidth={1.5} />
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={styles.favoriteBtn}
+        onPress={() => toggleFavorite(item.id)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        {item.is_favorite
+          ? <IconBookmarkFilled size={22} color={accent} />
+          : <IconBookmark size={22} color={colors.textMuted} strokeWidth={1.5} />
+        }
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
@@ -714,7 +706,7 @@ const styles = StyleSheet.create({
   articleBody: { flex: 1 },
   articleTitle: { ...typography.title, marginBottom: 4 },
   metaText: { ...typography.caption },
-  articleActions: { marginLeft: spacing.sm, alignItems: 'center' },
+  favoriteBtn: { marginLeft: spacing.md, padding: 4 },
 
   // ── Empty state ─────────────────────────────────────────────────────────────
   emptyWrap: { alignItems: 'center', marginTop: 80 },

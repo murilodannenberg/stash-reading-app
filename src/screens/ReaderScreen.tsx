@@ -8,7 +8,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import {
   IconShare2, IconTextSize, IconAlertCircle,
   IconFileText, IconMinus, IconPlus, IconLineHeight, IconCheck,
-  IconHighlight, IconX,
+  IconHighlight, IconX, IconBookmark, IconBookmarkFilled,
 } from '@tabler/icons-react-native';
 import RenderHtml from 'react-native-render-html';
 import { getArticleById, markAsRead } from '../database';
@@ -16,6 +16,7 @@ import { Article, RootStackParamList } from '../types';
 import { useReadingPrefsStore } from '../stores/readingPrefsStore';
 import { useAppThemeStore } from '../stores/appThemeStore';
 import { useHighlightStore } from '../stores/highlightStore';
+import { useArticleStore } from '../stores/articleStore';
 import { READING_THEMES, ReadingThemeKey, FONT_FAMILIES, FontFamilyKey } from '../theme/reading';
 import { palette, spacing, radius } from '../theme/colors';
 
@@ -45,6 +46,8 @@ export function ReaderScreen() {
   const { prefs, setFontSize, setFontFamily, setTheme, setLineHeight, _hydrate } = useReadingPrefsStore();
   const accent = useAppThemeStore((s) => s.prefs.accentColor);
   const { articleHighlights, loadArticleHighlights, addHighlight } = useHighlightStore();
+  const { toggleFavorite } = useArticleStore();
+  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
@@ -52,12 +55,21 @@ export function ReaderScreen() {
     getArticleById(articleId).then((a) => {
       setArticle(a);
       setLoading(false);
-      if (a && !a.is_read) markAsRead(articleId, true);
+      if (a) {
+        setIsFavorite(a.is_favorite);
+        if (!a.is_read) markAsRead(articleId, true);
+      }
     });
     loadArticleHighlights(articleId);
   }, [articleId, loadArticleHighlights]);
 
   const toggleSettings = useCallback(() => setShowSettings((v) => !v), []);
+
+  const handleToggleFavorite = useCallback(() => {
+    if (!article) return;
+    toggleFavorite(article.id);
+    setIsFavorite((v) => !v);
+  }, [article, toggleFavorite]);
 
   const handleShare = useCallback(() => {
     if (!article) return;
@@ -111,6 +123,12 @@ export function ReaderScreen() {
           <TouchableOpacity onPress={handleShare} style={headerStyles.btn}>
             <IconShare2 size={20} color={accent} strokeWidth={1.75} />
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleToggleFavorite} style={headerStyles.btn}>
+            {isFavorite
+              ? <IconBookmarkFilled size={20} color={accent} />
+              : <IconBookmark size={20} color={accent} strokeWidth={1.75} />
+            }
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleOpenHighlightModal} style={headerStyles.btn}>
             <View>
               <IconHighlight size={20} color={accent} strokeWidth={1.75} />
@@ -127,7 +145,7 @@ export function ReaderScreen() {
         </View>
       ),
     });
-  }, [navigation, toggleSettings, handleShare, handleOpenHighlightModal, accent, articleHighlights.length]);
+  }, [navigation, toggleSettings, handleShare, handleToggleFavorite, handleOpenHighlightModal, accent, articleHighlights.length, isFavorite]);
 
   if (loading) {
     return (
