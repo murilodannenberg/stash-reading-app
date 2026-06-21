@@ -4,3 +4,4 @@ export * from './repositories/articles';
 export * from './repositories/folders';
 export * from './repositories/tags';
 export * from './repositories/files';
+export * from './repositories/highlights';

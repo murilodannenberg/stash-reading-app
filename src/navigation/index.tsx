@@ -17,6 +17,7 @@ import { ReaderScreen } from '../screens/ReaderScreen';
 import { FolderDetailScreen } from '../screens/FolderDetailScreen';
 import { AddArticleScreen } from '../screens/AddArticleScreen';
 import { TrashScreen } from '../screens/TrashScreen';
+import { HighlightsScreen } from '../screens/HighlightsScreen';
 
 import { RootStackParamList, MainTabParamList } from '../types';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
@@ -143,6 +144,11 @@ export function AppNavigator() {
           name="Trash"
           component={TrashScreen}
           options={{ title: 'Lixeira' }}
+        />
+        <Stack.Screen
+          name="Highlights"
+          component={HighlightsScreen}
+          options={{ title: 'Destaques' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

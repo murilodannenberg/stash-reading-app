@@ -99,6 +99,7 @@ export type RootStackParamList = {
   AddArticle: { folderId?: string };
   Search: undefined;
   Trash: undefined;
+  Highlights: undefined;
 };
 
 export type MainTabParamList = {

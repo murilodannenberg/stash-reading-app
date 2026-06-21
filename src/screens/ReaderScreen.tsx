@@ -1,18 +1,21 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet,
-  ActivityIndicator, TouchableOpacity, useWindowDimensions, Modal, Share,
+  View, Text, ScrollView, StyleSheet, TextInput,
+  ActivityIndicator, TouchableOpacity, useWindowDimensions, Modal, Share, Alert,
+  NativeSyntheticEvent, TextInputSelectionChangeEventData, SafeAreaView,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import {
   IconShare2, IconTextSize, IconAlertCircle,
   IconFileText, IconMinus, IconPlus, IconLineHeight, IconCheck,
+  IconHighlight, IconX,
 } from '@tabler/icons-react-native';
 import RenderHtml from 'react-native-render-html';
 import { getArticleById, markAsRead } from '../database';
 import { Article, RootStackParamList } from '../types';
 import { useReadingPrefsStore } from '../stores/readingPrefsStore';
 import { useAppThemeStore } from '../stores/appThemeStore';
+import { useHighlightStore } from '../stores/highlightStore';
 import { READING_THEMES, ReadingThemeKey, FONT_FAMILIES, FontFamilyKey } from '../theme/reading';
 import { palette, spacing, radius } from '../theme/colors';
 
@@ -20,8 +23,12 @@ type Route = RouteProp<RootStackParamList, 'Reader'>;
 
 const FONT_SIZES = [14, 15, 16, 17, 18, 20, 22, 24];
 
-// Detecta tema escuro comparando com o background do tema escuro
 const DARK_BG = READING_THEMES.escuro.backgroundColor;
+
+/** Extrai texto plano de HTML para uso no modal de destaque */
+function htmlToPlainText(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
 
 export function ReaderScreen() {
   const route = useRoute<Route>();
@@ -30,10 +37,14 @@ export function ReaderScreen() {
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHighlightModal, setShowHighlightModal] = useState(false);
+  const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
+  const [saving, setSaving] = useState(false);
   const { width } = useWindowDimensions();
 
   const { prefs, setFontSize, setFontFamily, setTheme, setLineHeight, _hydrate } = useReadingPrefsStore();
   const accent = useAppThemeStore((s) => s.prefs.accentColor);
+  const { articleHighlights, loadArticleHighlights, addHighlight } = useHighlightStore();
 
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
@@ -41,25 +52,57 @@ export function ReaderScreen() {
     getArticleById(articleId).then((a) => {
       setArticle(a);
       setLoading(false);
-      if (a && !a.is_read) {
-        markAsRead(articleId, true);
-      }
+      if (a && !a.is_read) markAsRead(articleId, true);
     });
-  }, [articleId]);
+    loadArticleHighlights(articleId);
+  }, [articleId, loadArticleHighlights]);
 
-  const toggleSettings = useCallback(() => {
-    setShowSettings((v) => !v);
-  }, []);
+  const toggleSettings = useCallback(() => setShowSettings((v) => !v), []);
 
   const handleShare = useCallback(() => {
     if (!article) return;
     Share.share({
-      message: article.url
-        ? `${article.title}\n${article.url}`
-        : article.title,
+      message: article.url ? `${article.title}\n${article.url}` : article.title,
       title: article.title,
     });
   }, [article]);
+
+  const handleOpenHighlightModal = useCallback(() => {
+    setSelection(null);
+    setShowHighlightModal(true);
+  }, []);
+
+  const handleSaveHighlight = useCallback(async () => {
+    if (!article || !selection || selection.start === selection.end) return;
+    const plainText = article.content_text
+      ?? (article.content_html ? htmlToPlainText(article.content_html) : '');
+    const selectedText = plainText.slice(selection.start, selection.end).trim();
+    if (!selectedText) return;
+
+    setSaving(true);
+    try {
+      await addHighlight({
+        article_id: article.id,
+        selected_text: selectedText,
+        start_offset: selection.start,
+        end_offset: selection.end,
+      });
+      setShowHighlightModal(false);
+      setSelection(null);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar o destaque.');
+    } finally {
+      setSaving(false);
+    }
+  }, [article, selection, addHighlight]);
+
+  const handleSelectionChange = useCallback(
+    (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
+      const { start, end } = e.nativeEvent.selection;
+      setSelection(start !== end ? { start, end } : null);
+    },
+    [],
+  );
 
   useEffect(() => {
     navigation.setOptions({
@@ -68,13 +111,23 @@ export function ReaderScreen() {
           <TouchableOpacity onPress={handleShare} style={headerStyles.btn}>
             <IconShare2 size={20} color={accent} strokeWidth={1.75} />
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleOpenHighlightModal} style={headerStyles.btn}>
+            <View>
+              <IconHighlight size={20} color={accent} strokeWidth={1.75} />
+              {articleHighlights.length > 0 && (
+                <View style={[headerStyles.badge, { backgroundColor: accent }]}>
+                  <Text style={headerStyles.badgeText}>{articleHighlights.length}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
           <TouchableOpacity onPress={toggleSettings} style={headerStyles.btn}>
             <IconTextSize size={20} color={accent} strokeWidth={1.75} />
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [navigation, toggleSettings, handleShare, accent]);
+  }, [navigation, toggleSettings, handleShare, handleOpenHighlightModal, accent, articleHighlights.length]);
 
   if (loading) {
     return (
@@ -99,7 +152,6 @@ export function ReaderScreen() {
   const isDark = prefs.backgroundColor === DARK_BG;
   const fontFamilyValue = FONT_FAMILIES[prefs.fontFamily]?.value;
 
-  // Determina o linkColor do tema ativo
   const activeLinkColor = Object.values(READING_THEMES).find(
     (t) => t.backgroundColor === prefs.backgroundColor
   )?.linkColor ?? palette.primary;
@@ -134,10 +186,12 @@ export function ReaderScreen() {
     code: { fontSize: prefs.fontSize - 2 },
   };
 
+  const plainText = article.content_text
+    ?? (article.content_html ? htmlToPlainText(article.content_html) : '');
+
   return (
     <View style={[styles.container, { backgroundColor: prefs.backgroundColor }]}>
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Título em Georgia — design system §3 (display / corpo de leitura usa serif) */}
         <Text style={[styles.title, {
           color: prefs.textColor,
           fontSize: prefs.fontSize * 1.5,
@@ -194,13 +248,78 @@ export function ReaderScreen() {
         )}
       </ScrollView>
 
+      {/* Modal de seleção de destaque */}
+      <Modal
+        visible={showHighlightModal}
+        animationType="slide"
+        onRequestClose={() => setShowHighlightModal(false)}
+      >
+        <SafeAreaView style={highlightStyles.container}>
+          {/* Header */}
+          <View style={highlightStyles.header}>
+            <TouchableOpacity
+              onPress={() => setShowHighlightModal(false)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <IconX size={22} color={palette.gray500} strokeWidth={1.75} />
+            </TouchableOpacity>
+            <Text style={highlightStyles.headerTitle}>Marcar trecho</Text>
+            <View style={{ width: 22 }} />
+          </View>
+
+          <Text style={highlightStyles.hint}>
+            Segure e arraste para selecionar o trecho que deseja destacar.
+          </Text>
+
+          {plainText ? (
+            <ScrollView
+              style={highlightStyles.scroll}
+              contentContainerStyle={highlightStyles.scrollContent}
+            >
+              <TextInput
+                value={plainText}
+                editable={false}
+                multiline
+                scrollEnabled={false}
+                onSelectionChange={handleSelectionChange}
+                style={highlightStyles.articleText}
+                textAlignVertical="top"
+              />
+            </ScrollView>
+          ) : (
+            <View style={highlightStyles.noContent}>
+              <IconFileText size={40} color={palette.gray300} strokeWidth={1.25} />
+              <Text style={highlightStyles.noContentText}>
+                Este artigo não possui texto para destacar.
+              </Text>
+            </View>
+          )}
+
+          {/* Rodapé aparece ao selecionar */}
+          {selection && selection.start !== selection.end && (
+            <View style={highlightStyles.footer}>
+              <TouchableOpacity
+                style={[highlightStyles.saveBtn, { backgroundColor: accent }, saving && { opacity: 0.7 }]}
+                onPress={handleSaveHighlight}
+                disabled={saving}
+                activeOpacity={0.8}
+              >
+                <IconHighlight size={18} color="#fff" strokeWidth={2} />
+                <Text style={highlightStyles.saveBtnText}>
+                  {saving ? 'Salvando…' : 'Salvar destaque'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </SafeAreaView>
+      </Modal>
+
       {/* Painel de preferências de leitura */}
       <Modal visible={showSettings} transparent animationType="slide" onRequestClose={toggleSettings}>
         <TouchableOpacity style={settingsStyles.overlay} activeOpacity={1} onPress={toggleSettings}>
           <View style={settingsStyles.panel}>
             <View style={settingsStyles.handle} />
 
-            {/* Tamanho da fonte */}
             <Text style={settingsStyles.heading}>Tamanho</Text>
             <View style={settingsStyles.sizeRow}>
               <TouchableOpacity
@@ -224,7 +343,6 @@ export function ReaderScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Família de fonte */}
             <Text style={settingsStyles.heading}>Fonte</Text>
             <View style={settingsStyles.row}>
               {(Object.keys(FONT_FAMILIES) as FontFamilyKey[]).map((key) => {
@@ -251,7 +369,6 @@ export function ReaderScreen() {
               })}
             </View>
 
-            {/* Espaçamento entre linhas */}
             <Text style={settingsStyles.heading}>Espaçamento</Text>
             <View style={settingsStyles.row}>
               {[1.4, 1.6, 1.8, 2.0].map((lh) => {
@@ -277,7 +394,6 @@ export function ReaderScreen() {
               })}
             </View>
 
-            {/* Tema de leitura */}
             <Text style={settingsStyles.heading}>Tema</Text>
             <View style={settingsStyles.row}>
               {(Object.keys(READING_THEMES) as ReadingThemeKey[]).map((key) => {
@@ -316,6 +432,13 @@ export function ReaderScreen() {
 const headerStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   btn: { paddingHorizontal: 10, paddingVertical: 6 },
+  badge: {
+    position: 'absolute', top: -4, right: -4,
+    minWidth: 14, height: 14, borderRadius: 7,
+    justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: 2,
+  },
+  badgeText: { fontSize: 9, color: '#fff', fontWeight: '700' },
 });
 
 const styles = StyleSheet.create({
@@ -338,10 +461,45 @@ const styles = StyleSheet.create({
   backLink: { fontSize: 16, fontWeight: '600' },
 });
 
+const highlightStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: palette.gray50 },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
+    borderBottomWidth: 0.5, borderBottomColor: palette.gray200,
+  },
+  headerTitle: {
+    fontSize: 16, fontWeight: '600', color: palette.gray800,
+  },
+  hint: {
+    fontSize: 13, color: palette.gray500,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
+    backgroundColor: '#fde04720',
+    borderBottomWidth: 0.5, borderBottomColor: palette.gray200,
+  },
+  scroll: { flex: 1 },
+  scrollContent: { padding: spacing.xl, paddingBottom: 40 },
+  articleText: {
+    fontSize: 16, lineHeight: 26, color: palette.gray900,
+    fontFamily: 'serif',
+  },
+  noContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  noContentText: { fontSize: 15, color: palette.gray500, marginTop: spacing.md, textAlign: 'center' },
+  footer: {
+    padding: spacing.lg,
+    borderTopWidth: 0.5, borderTopColor: palette.gray200,
+    backgroundColor: palette.white,
+  },
+  saveBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: spacing.md, borderRadius: radius.lg, gap: spacing.sm,
+  },
+  saveBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
+});
+
 const settingsStyles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   panel: {
-    // Papel como fundo do painel — design system §2
     backgroundColor: palette.gray50,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
@@ -365,8 +523,6 @@ const settingsStyles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
-
-  // Stepper de tamanho
   sizeRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: spacing.xl, marginBottom: spacing.md,
@@ -382,8 +538,6 @@ const settingsStyles = StyleSheet.create({
     color: palette.gray900,
     minWidth: 50, textAlign: 'center',
   },
-
-  // Fonte
   fontBtn: {
     flex: 1, minWidth: 80, paddingVertical: 10,
     borderRadius: radius.md, borderWidth: 1.5,
@@ -391,8 +545,6 @@ const settingsStyles = StyleSheet.create({
     backgroundColor: palette.white,
   },
   fontBtnText: { fontSize: 14, color: palette.gray600 },
-
-  // Espaçamento
   lhBtn: {
     flex: 1, paddingVertical: 8, borderRadius: radius.md,
     borderWidth: 1.5, borderColor: palette.gray200,
@@ -401,8 +553,6 @@ const settingsStyles = StyleSheet.create({
     backgroundColor: palette.white,
   },
   lhText: { fontSize: 13, color: palette.gray500 },
-
-  // Tema
   themeBtn: {
     flex: 1, minWidth: 65, paddingVertical: 10,
     borderRadius: radius.md, alignItems: 'center',
