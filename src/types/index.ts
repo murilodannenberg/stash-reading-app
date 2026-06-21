@@ -96,7 +96,7 @@ export type RootStackParamList = {
   Reader: { articleId: string };
   FolderDetail: { folderId: string; folderName: string };
   TagDetail: { tagId: string; tagName: string };
-  AddArticle: { folderId?: string };
+  AddArticle: { folderId?: string; sharedUrl?: string };
   Search: undefined;
   Trash: undefined;
   Highlights: undefined;

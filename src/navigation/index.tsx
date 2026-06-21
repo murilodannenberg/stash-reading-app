@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
@@ -21,9 +21,12 @@ import { HighlightsScreen } from '../screens/HighlightsScreen';
 
 import { RootStackParamList, MainTabParamList } from '../types';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
+import { useShareStore } from '../stores/shareStore';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
+
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 type TablerIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 
@@ -100,9 +103,28 @@ function MainTabs() {
 export function AppNavigator() {
   const { prefs } = useAppThemeStore();
   const colors = getHomeColors(prefs.homeTheme);
+  const { pendingUrl, setPendingUrl } = useShareStore();
+
+  // Navega para AddArticle quando uma URL chega via share intent
+  useEffect(() => {
+    if (!pendingUrl) return;
+    if (!navigationRef.isReady()) return;
+    navigationRef.navigate('AddArticle', { sharedUrl: pendingUrl });
+    setPendingUrl(null);
+  }, [pendingUrl, setPendingUrl]);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => {
+        // Cobre o caso em que pendingUrl chegou antes da nav estar pronta
+        const url = useShareStore.getState().pendingUrl;
+        if (url) {
+          navigationRef.navigate('AddArticle', { sharedUrl: url });
+          useShareStore.getState().setPendingUrl(null);
+        }
+      }}
+    >
       <Stack.Navigator
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },

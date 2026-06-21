@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, StyleSheet, TouchableOpacity,
   ActivityIndicator, ScrollView, Alert,
@@ -20,8 +20,9 @@ export function AddArticleScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const folderId = route.params?.folderId ?? null;
+  const sharedUrl = route.params?.sharedUrl ?? null;
 
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(sharedUrl ?? '');
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
   const { prefs: appTheme } = useAppThemeStore();
@@ -55,8 +56,8 @@ export function AddArticleScreen() {
     }
   }, [title, url, folderId, navigation]);
 
-  const handleSaveUrl = useCallback(async () => {
-    const trimmed = url.trim();
+  const doSaveUrl = useCallback(async (rawUrl: string) => {
+    const trimmed = rawUrl.trim();
     if (!trimmed) {
       Alert.alert('URL obrigatoria', 'Informe uma URL valida.');
       return;
@@ -79,8 +80,6 @@ export function AddArticleScreen() {
         reading_time_min: parsed.reading_time_min,
         folder_id: folderId,
       });
-
-      // Download cover image in the background (non-blocking for UX)
       if (parsed.cover_image_url) {
         downloadCoverImage(parsed.cover_image_url, article.id).then((localPath) => {
           if (localPath) {
@@ -90,7 +89,6 @@ export function AddArticleScreen() {
           }
         });
       }
-
       navigation.goBack();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Erro desconhecido ao processar a URL.';
@@ -98,7 +96,15 @@ export function AddArticleScreen() {
     } finally {
       setLoading(false);
     }
-  }, [url, folderId, navigation]);
+  }, [folderId, navigation]);
+
+  // Auto-salva quando a tela é aberta via share intent
+  useEffect(() => {
+    if (sharedUrl) doSaveUrl(sharedUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSaveUrl = useCallback(() => doSaveUrl(url), [url, doSaveUrl]);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} keyboardShouldPersistTaps="handled">

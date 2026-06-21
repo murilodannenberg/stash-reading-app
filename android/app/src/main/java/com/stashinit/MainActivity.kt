@@ -1,5 +1,6 @@
 package com.stashinit
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 
@@ -11,12 +12,32 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 import expo.modules.ReactActivityDelegateWrapper
 
 class MainActivity : ReactActivity() {
+
+  companion object {
+    /** URL pendente a ser processada pelo JS após o app inicializar. */
+    var pendingSharedUrl: String? = null
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
-    // Set the theme to AppTheme BEFORE onCreate to support
-    // coloring the background, status bar, and navigation bar.
-    // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
+    extractSharedUrl(intent)
     super.onCreate(null)
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    extractSharedUrl(intent)
+  }
+
+  private fun extractSharedUrl(intent: Intent?) {
+    if (intent?.action == Intent.ACTION_SEND &&
+        intent.type?.startsWith("text/") == true) {
+      val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+      if (!text.isNullOrBlank()) {
+        pendingSharedUrl = text
+      }
+    }
   }
 
   /**

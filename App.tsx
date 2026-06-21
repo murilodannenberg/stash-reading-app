@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -8,6 +8,8 @@ import { openDatabase } from './src/database/connection';
 import { runMigrations } from './src/database/migrations';
 import { AppNavigator } from './src/navigation';
 import { useAppThemeStore } from './src/stores/appThemeStore';
+import { useShareStore } from './src/stores/shareStore';
+import { getSharedUrl, clearSharedUrl, extractUrl } from './src/services/shareIntent';
 import { palette } from './src/theme/colors';
 
 export default function App() {
@@ -15,6 +17,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   const hydrateTheme = useAppThemeStore((s) => s._hydrate);
+  const setPendingUrl = useShareStore((s) => s.setPendingUrl);
 
   useEffect(() => {
     async function init() {
@@ -29,6 +32,30 @@ export default function App() {
     }
     init();
   }, [hydrateTheme]);
+
+  // Detecta URLs compartilhadas após o banco estar pronto
+  useEffect(() => {
+    if (!ready) return;
+
+    async function checkSharedUrl() {
+      const raw = await getSharedUrl();
+      if (raw) {
+        clearSharedUrl();
+        const url = extractUrl(raw) ?? (raw.startsWith('http') ? raw : null);
+        if (url) setPendingUrl(url);
+      }
+    }
+
+    // Verifica na inicialização (cold start via share intent)
+    checkSharedUrl();
+
+    // Verifica quando o app volta ao primeiro plano (warm start via share intent)
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') checkSharedUrl();
+    });
+
+    return () => sub.remove();
+  }, [ready, setPendingUrl]);
 
   if (error) {
     return (
