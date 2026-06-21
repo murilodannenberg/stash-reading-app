@@ -109,5 +109,6 @@ export type MainTabParamList = {
   Library: undefined;
   Shelves: undefined;
   Highlights: undefined;
+  Sources: undefined;
   Settings: undefined;
 };

@@ -13,7 +13,7 @@ import {
 } from '@tabler/icons-react-native';
 import WebView from 'react-native-webview';
 import type { WebViewMessageEvent } from 'react-native-webview';
-import { File, Directory, Paths } from 'expo-file-system';
+import { File, Directory, Paths, readAsStringAsync, EncodingType } from 'expo-file-system';
 import { getArticleById, markAsRead, updateArticleContent } from '../database';
 import { Article, ReadingPreferences, RootStackParamList } from '../types';
 import { useReadingPrefsStore } from '../stores/readingPrefsStore';
@@ -45,7 +45,7 @@ function escHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function buildArticleHtml(article: Article, prefs: ReadingPreferences, accent: string): string {
+function buildArticleHtml(article: Article, prefs: ReadingPreferences, accent: string, coverDataUrl?: string): string {
   const fontCss = FONT_FAMILIES[prefs.fontFamily]?.value ?? 'sans-serif';
   const content = article.content_html
     || (article.content_text
@@ -57,6 +57,9 @@ function buildArticleHtml(article: Article, prefs: ReadingPreferences, accent: s
   ].filter(Boolean).join(' · ');
 
   const markerColors = MARKER_COLORS.map((m) => m.color);
+  const coverHtml = coverDataUrl
+    ? `<img class="cover" src="${coverDataUrl}" />`
+    : '';
 
   return `<!DOCTYPE html>
 <html><head>
@@ -84,6 +87,7 @@ h3{font-size:var(--fs-3);font-weight:600;margin:16px 0 6px}
 h4,h5,h6{font-size:var(--fs);font-weight:600;margin:12px 0 4px}
 a{color:var(--ac);text-decoration:underline}
 img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:6px;cursor:pointer}
+.cover{width:100%;height:auto;max-height:240px;object-fit:cover;border-radius:10px;margin:0 0 16px;display:block;}
 figure{margin:12px 0}
 figcaption{font-size:var(--fs-s);opacity:.6;margin-top:4px}
 blockquote{border-left:3px solid currentColor;opacity:.7;padding-left:14px;margin:12px 0;font-style:italic}
@@ -111,6 +115,7 @@ li{margin-bottom:4px}
   margin-left:4px;font-size:18px;color:#fff;font-weight:300;line-height:1;}
 </style>
 </head><body>
+${coverHtml}
 <h1 class="title">${escHtml(article.title)}</h1>
 ${meta ? `<p class="meta">${meta}</p>` : ''}
 <hr>
@@ -165,6 +170,26 @@ ${content}
     window.ReactNativeWebView.postMessage(JSON.stringify({type:'scroll',progress:p}));
   },{passive:true});
 
+  // Fix lazy-loaded images
+  (function(){
+    var lazy=['data-src','data-lazy-src','data-original','data-lazy','data-url','data-delayed-url'];
+    document.querySelectorAll('img').forEach(function(img){
+      for(var i=0;i<lazy.length;i++){
+        var v=img.getAttribute(lazy[i]);
+        if(v&&(v.indexOf('http')===0||v.indexOf('//')===0)){img.src=v;break;}
+      }
+      img.loading='eager';
+    });
+    document.querySelectorAll('noscript').forEach(function(ns){
+      var h=ns.innerHTML||'';
+      if(h.indexOf('img')<0)return;
+      var d=document.createElement('div');d.innerHTML=h;
+      var im=d.querySelector('img');
+      if(im&&im.src){var n=new Image();n.src=im.src;n.style.maxWidth='100%';n.style.height='auto';n.style.borderRadius='6px';if(ns.parentNode)ns.parentNode.insertBefore(n,ns);}
+      if(ns.remove)ns.remove();
+    });
+  })();
+
   // Image long-press to save
   document.querySelectorAll('img').forEach(function(img){
     img.addEventListener('touchstart',function(){
@@ -198,6 +223,7 @@ export function ReaderScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editText, setEditText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [coverDataUrl, setCoverDataUrl] = useState<string | undefined>(undefined);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const webViewRef = useRef<any>(null);
@@ -211,21 +237,31 @@ export function ReaderScreen() {
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
   useEffect(() => {
-    getArticleById(articleId).then((a) => {
+    getArticleById(articleId).then(async (a) => {
       setArticle(a);
       setLoading(false);
       if (a) {
         setIsFavorite(a.is_favorite);
         if (!a.is_read) markAsRead(articleId, true);
+        if (a.cover_image_path) {
+          try {
+            const ext = a.cover_image_path.split('.').pop()?.toLowerCase() ?? 'jpg';
+            const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+            const b64 = await readAsStringAsync(a.cover_image_path, { encoding: EncodingType.Base64 });
+            setCoverDataUrl(`data:${mime};base64,${b64}`);
+          } catch {
+            // cover not available locally, skip
+          }
+        }
       }
     });
     loadArticleHighlights(articleId);
   }, [articleId, loadArticleHighlights]);
 
   const articleSource = useMemo(
-    () => (article ? { html: buildArticleHtml(article, prefs, accent) } : null),
+    () => (article ? { html: buildArticleHtml(article, prefs, accent, coverDataUrl) } : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [article],
+    [article, coverDataUrl],
   );
 
   useEffect(() => {
@@ -247,6 +283,43 @@ export function ReaderScreen() {
       true;
     })();`);
   }, [prefs.fontSize, prefs.textColor, prefs.backgroundColor, prefs.lineHeight, prefs.fontFamily, webViewReady]);
+
+  // Inject highlight marks into WebView text
+  useEffect(() => {
+    if (!webViewReady || !webViewRef.current || articleHighlights.length === 0) return;
+    const hlJson = JSON.stringify(
+      articleHighlights.map((h) => ({ t: h.selected_text, c: h.color }))
+    );
+    webViewRef.current.injectJavaScript(`(function(){
+      try{
+        document.querySelectorAll('mark.sh').forEach(function(m){
+          var p=m.parentNode;while(m.firstChild)p.insertBefore(m.firstChild,m);p.removeChild(m);p.normalize();
+        });
+        var hl=${hlJson};
+        function markText(text,color){
+          var walker=document.createTreeWalker(document.body,4,null,false);
+          var node,lText=text.toLowerCase();
+          while(node=walker.nextNode()){
+            var pn=node.parentNode;
+            if(!pn||pn.tagName==='SCRIPT'||pn.tagName==='STYLE'||pn.tagName==='MARK')continue;
+            var val=node.nodeValue||'',lVal=val.toLowerCase(),idx=lVal.indexOf(lText);
+            if(idx<0)continue;
+            var b=document.createTextNode(val.substring(0,idx));
+            var ins=document.createTextNode(val.substring(idx,idx+text.length));
+            var a=document.createTextNode(val.substring(idx+text.length));
+            var mk=document.createElement('mark');
+            mk.className='sh';
+            mk.style.cssText='background:'+color+';border-radius:3px;padding:1px 0;';
+            mk.appendChild(ins);
+            pn.insertBefore(b,node);pn.insertBefore(mk,node);pn.insertBefore(a,node);pn.removeChild(node);
+            return;
+          }
+        }
+        hl.forEach(function(h){markText(h.t,h.c);});
+      }catch(e){}
+      true;
+    })();`);
+  }, [articleHighlights, webViewReady]);
 
   const handleToggleFavorite = useCallback(() => {
     if (!article) return;
@@ -532,7 +605,8 @@ export function ReaderScreen() {
       <Modal visible={showEditModal} transparent animationType="slide" onRequestClose={() => setShowEditModal(false)}>
         <KeyboardAvoidingView
           style={editStyles.wrap}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
+          keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
         >
           <View style={editStyles.panel}>
             <View style={editStyles.header}>

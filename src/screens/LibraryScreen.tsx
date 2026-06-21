@@ -10,7 +10,7 @@ import {
   IconBookmark, IconBookmarkFilled, IconShare2,
   IconAdjustments, IconX, IconCircleX,
   IconStack2, IconEyeOff, IconCircleCheck,
-  IconTrash, IconArchive, IconArchiveOff, IconClock, IconTag, IconGlobe,
+  IconTrash, IconArchive, IconArchiveOff, IconClock, IconTag,
 } from '@tabler/icons-react-native';
 import { ActionSheet } from '../components/ActionSheet';
 import { TagPicker } from '../components/TagPicker';
@@ -22,18 +22,7 @@ import { spacing, radius, typography, palette } from '../theme/colors';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type StatusFilter = 'all' | 'unread' | 'read' | 'favorites' | 'archived';
-type ViewMode = 'list' | 'sources';
 type TablerIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
-
-function extractDomain(url: string | null): string {
-  if (!url) return 'Sem fonte';
-  try {
-    const u = new URL(url);
-    return u.hostname.replace(/^www\./, '');
-  } catch {
-    return 'Sem fonte';
-  }
-}
 
 const FILTERS: { key: StatusFilter; label: string; Icon: TablerIcon }[] = [
   { key: 'all',       label: 'Todos',      Icon: IconStack2 },
@@ -60,24 +49,12 @@ export function LibraryScreen() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [tagPickerArticleId, setTagPickerArticleId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity
-            onPress={() => setViewMode((m) => m === 'sources' ? 'list' : 'sources')}
-            style={{ paddingHorizontal: 8, paddingVertical: 6 }}
-          >
-            <IconGlobe
-              size={22}
-              color={viewMode === 'sources' ? accent : colors.textMuted}
-              strokeWidth={1.75}
-            />
-          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation.navigate('Tags')}
             style={{ paddingHorizontal: 8, paddingVertical: 6 }}
@@ -99,7 +76,7 @@ export function LibraryScreen() {
         </View>
       ),
     });
-  }, [navigation, accent, colors.textMuted, viewMode]);
+  }, [navigation, accent, colors.textMuted]);
 
   useFocusEffect(
     useCallback(() => {
@@ -140,18 +117,6 @@ export function LibraryScreen() {
     }
     return result;
   }, [articles, statusFilter, searchQuery]);
-
-  const sourceList = useMemo(() => {
-    const map = new Map<string, { domain: string; count: number; readCount: number }>();
-    for (const a of articles) {
-      const domain = extractDomain(a.url);
-      const existing = map.get(domain) ?? { domain, count: 0, readCount: 0 };
-      existing.count += 1;
-      if (a.is_read) existing.readCount += 1;
-      map.set(domain, existing);
-    }
-    return Array.from(map.values()).sort((a, b) => b.count - a.count);
-  }, [articles]);
 
   const showFeatured =
     statusFilter === 'all' && !selectedTag && !searchQuery.trim() && filteredArticles.length > 0;
@@ -475,46 +440,6 @@ export function LibraryScreen() {
       )}
     </View>
   );
-
-  if (viewMode === 'sources') {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <FlatList
-          data={sourceList}
-          keyExtractor={(s) => s.domain}
-          contentContainerStyle={styles.list}
-          ListHeaderComponent={
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginTop: spacing.xl }]}>
-              Fontes · {sourceList.length}
-            </Text>
-          }
-          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: colors.border }]} />}
-          ListEmptyComponent={
-            <View style={styles.emptyWrap}>
-              <IconGlobe size={48} color={colors.textMuted} strokeWidth={1} />
-              <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>Nenhuma fonte</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                Salve artigos com URL para ver as fontes aqui
-              </Text>
-            </View>
-          }
-          renderItem={({ item }) => (
-            <View style={[styles.articleCard, { backgroundColor: colors.background }]}>
-              <View style={[styles.articleThumbPlaceholder, { backgroundColor: colors.inputBg }]}>
-                <IconGlobe size={22} color={colors.textMuted} strokeWidth={1.5} />
-              </View>
-              <View style={styles.articleBody}>
-                <Text style={[styles.articleTitle, { color: colors.text }]}>{item.domain}</Text>
-                <Text style={[styles.metaText, { color: colors.textMuted }]}>
-                  {item.count} {item.count === 1 ? 'artigo' : 'artigos'} · {item.readCount} lidos
-                </Text>
-              </View>
-            </View>
-          )}
-        />
-      </View>
-    );
-  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

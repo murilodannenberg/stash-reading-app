@@ -4,10 +4,11 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   IconBooks, IconColumns3, IconColumns3Filled,
-  IconHighlight, IconSettings,
+  IconHighlight, IconSettings, IconNews,
 } from '@tabler/icons-react-native';
 
 import { LibraryScreen } from '../screens/LibraryScreen';
+import { SourcesScreen } from '../screens/SourcesScreen';
 import { FilesScreen } from '../screens/FilesScreen';
 import { ShelvesScreen } from '../screens/ShelvesScreen';
 import { TagsScreen } from '../screens/TagsScreen';
@@ -35,6 +36,7 @@ const TAB_ICONS: Record<keyof MainTabParamList, { active: TablerIcon; inactive: 
   Library:    { active: IconBooks,           inactive: IconBooks },
   Shelves:    { active: IconColumns3Filled,  inactive: IconColumns3 },
   Highlights: { active: IconHighlight,       inactive: IconHighlight },
+  Sources:    { active: IconNews,            inactive: IconNews },
   Settings:   { active: IconSettings,        inactive: IconSettings },
 };
 
@@ -85,6 +87,11 @@ function MainTabs() {
         name="Highlights"
         component={HighlightsScreen}
         options={{ title: 'Destaques', tabBarLabel: 'Destaques' }}
+      />
+      <Tab.Screen
+        name="Sources"
+        component={SourcesScreen}
+        options={{ title: 'Fontes', tabBarLabel: 'Fontes' }}
       />
       <Tab.Screen
         name="Settings"
