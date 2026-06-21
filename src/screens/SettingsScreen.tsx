@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { IconCheck, IconShieldCheck, IconBrandGithub, IconHeart, IconHighlight, IconChevronRight, IconDatabaseExport } from '@tabler/icons-react-native';
+import { IconCheck, IconShieldCheck, IconBrandGithub, IconHeart, IconFolder, IconTags, IconChevronRight, IconDatabaseExport } from '@tabler/icons-react-native';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import {
   HOME_THEMES, HomeThemeKey,
@@ -80,12 +80,24 @@ export function SettingsScreen() {
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <TouchableOpacity
           style={styles.menuRow}
-          onPress={() => navigation.navigate('Highlights')}
+          onPress={() => navigation.navigate('Files')}
           activeOpacity={0.7}
         >
-          <IconHighlight size={18} color={colors.textMuted} strokeWidth={1.5} />
+          <IconFolder size={18} color={colors.textMuted} strokeWidth={1.5} />
           <Text style={[styles.menuText, { color: colors.textSecondary }]}>
-            Meus destaques
+            Meus arquivos
+          </Text>
+          <IconChevronRight size={16} color={colors.textMuted} strokeWidth={1.5} />
+        </TouchableOpacity>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <TouchableOpacity
+          style={styles.menuRow}
+          onPress={() => navigation.navigate('Tags')}
+          activeOpacity={0.7}
+        >
+          <IconTags size={18} color={colors.textMuted} strokeWidth={1.5} />
+          <Text style={[styles.menuText, { color: colors.textSecondary }]}>
+            Gerenciar tags
           </Text>
           <IconChevronRight size={16} color={colors.textMuted} strokeWidth={1.5} />
         </TouchableOpacity>

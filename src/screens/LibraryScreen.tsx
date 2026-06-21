@@ -10,7 +10,7 @@ import {
   IconBookmark, IconBookmarkFilled, IconShare2,
   IconAdjustments, IconX, IconCircleX,
   IconStack2, IconEyeOff, IconCircleCheck,
-  IconTrash, IconArchive, IconArchiveOff, IconClock, IconTag,
+  IconTrash, IconArchive, IconArchiveOff, IconClock, IconTag, IconFolder,
 } from '@tabler/icons-react-native';
 import { ActionSheet } from '../components/ActionSheet';
 import { TagPicker } from '../components/TagPicker';
@@ -57,21 +57,27 @@ export function LibraryScreen() {
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity
-            onPress={() => navigation.navigate('Search')}
-            style={{ paddingHorizontal: 10, paddingVertical: 6 }}
+            onPress={() => navigation.navigate('Files')}
+            style={{ paddingHorizontal: 8, paddingVertical: 6 }}
           >
-            <IconSearch size={22} color={accent} strokeWidth={1.75} />
+            <IconFolder size={22} color={colors.textMuted} strokeWidth={1.75} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Search')}
+            style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+          >
+            <IconSearch size={22} color={colors.textMuted} strokeWidth={1.75} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation.navigate('AddArticle', {})}
-            style={{ paddingHorizontal: 10, paddingVertical: 6 }}
+            style={{ paddingHorizontal: 8, paddingVertical: 6 }}
           >
             <IconPlus size={26} color={accent} strokeWidth={2} />
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [navigation, accent]);
+  }, [navigation, accent, colors.textMuted]);
 
   useFocusEffect(
     useCallback(() => {
@@ -630,11 +636,6 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
     borderRadius: radius.xl,
     overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
   },
   heroImage: { width: '100%', height: 190 },
   heroContent: { padding: spacing.lg },
@@ -668,11 +669,6 @@ const styles = StyleSheet.create({
     width: 148,
     borderRadius: radius.lg,
     overflow: 'hidden',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
   },
   recentImage: { width: '100%', height: 96 },
   recentPlaceholder: { justifyContent: 'center', alignItems: 'center' },

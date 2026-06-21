@@ -100,14 +100,14 @@ export type RootStackParamList = {
   AddArticle: { folderId?: string; sharedUrl?: string };
   Search: undefined;
   Trash: undefined;
-  Highlights: undefined;
+  Files: undefined;
+  Tags: undefined;
   Backup: undefined;
 };
 
 export type MainTabParamList = {
   Library: undefined;
-  Files: undefined;
   Shelves: undefined;
-  Tags: undefined;
+  Highlights: undefined;
   Settings: undefined;
 };

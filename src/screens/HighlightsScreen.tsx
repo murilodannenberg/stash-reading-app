@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
   },
   quote: {
     ...typography.body,
+    fontFamily: 'Georgia',
     fontStyle: 'italic',
     lineHeight: 22,
   },

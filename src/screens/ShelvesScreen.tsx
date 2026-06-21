@@ -67,20 +67,18 @@ export function ShelvesScreen() {
 
   const renderItem = ({ item }: { item: Folder }) => (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      style={[styles.row, { backgroundColor: colors.background }]}
       activeOpacity={0.7}
       onPress={() => navigation.navigate('FolderDetail', { folderId: item.id, folderName: item.name })}
       onLongPress={() => handleLongPress(item)}
     >
       <View style={[styles.iconWrap, { backgroundColor: accent + '18' }]}>
-        <ShelfIcon iconKey={item.icon ?? 'books'} size={22} color={accent} strokeWidth={1.5} />
+        <ShelfIcon iconKey={item.icon ?? 'books'} size={20} color={accent} strokeWidth={1.5} />
       </View>
-      <View style={styles.cardBody}>
-        <Text style={[styles.cardName, { color: colors.text }]} numberOfLines={1}>
-          {item.name}
-        </Text>
-      </View>
-      <IconChevronRight size={18} color={colors.textMuted} strokeWidth={1.5} />
+      <Text style={[styles.rowName, { color: colors.text }]} numberOfLines={1}>
+        {item.name}
+      </Text>
+      <IconChevronRight size={16} color={colors.textMuted} strokeWidth={1.5} />
     </TouchableOpacity>
   );
 
@@ -91,6 +89,16 @@ export function ShelvesScreen() {
         keyExtractor={(f) => f.id}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
+        ItemSeparatorComponent={() => (
+          <View style={[styles.hairline, { backgroundColor: colors.border }]} />
+        )}
+        ListHeaderComponent={
+          folders.length > 0 ? (
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+              Minhas estantes
+            </Text>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <ShelfIcon iconKey="books" size={48} color={colors.border} strokeWidth={1} />
@@ -212,20 +220,25 @@ export function ShelvesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  list: { padding: spacing.lg, paddingBottom: 100 },
+  list: { paddingBottom: 100 },
 
-  card: {
+  sectionLabel: {
+    ...typography.label,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  hairline: { height: 0.5, marginLeft: spacing.lg + 44 + spacing.md },
+  row: {
     flexDirection: 'row', alignItems: 'center',
-    borderRadius: radius.lg, padding: spacing.lg,
-    marginBottom: spacing.sm, borderWidth: 1,
+    paddingHorizontal: spacing.lg, paddingVertical: 14,
   },
   iconWrap: {
     width: 44, height: 44, borderRadius: radius.md,
     justifyContent: 'center', alignItems: 'center',
     marginRight: spacing.md,
   },
-  cardBody: { flex: 1 },
-  cardName: { ...typography.subheading },
+  rowName: { ...typography.subheading, flex: 1 },
 
   emptyWrap: { alignItems: 'center', marginTop: 80 },
   emptyTitle: { ...typography.heading, marginTop: spacing.lg },
