@@ -190,6 +190,14 @@ export async function moveArticle(id: string, folderId: string | null): Promise<
   await db.runAsync('UPDATE articles SET folder_id = ? WHERE id = ?', [folderId, id]);
 }
 
+export async function updateArticleContent(id: string, contentText: string, contentHtml: string | null): Promise<void> {
+  const db = getDatabase();
+  await db.runAsync(
+    'UPDATE articles SET content_text = ?, content_html = ?, updated_at = ? WHERE id = ?',
+    [contentText, contentHtml, nowISO(), id],
+  );
+}
+
 export async function getArticlesByTag(tagId: string): Promise<Article[]> {
   const db = getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(

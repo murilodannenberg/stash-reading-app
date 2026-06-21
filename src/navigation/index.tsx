@@ -3,7 +3,7 @@ import { NavigationContainer, createNavigationContainerRef } from '@react-naviga
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
-  IconBooks, IconBookmark, IconBookmarkFilled,
+  IconBooks, IconColumns3, IconColumns3Filled,
   IconHighlight, IconSettings,
 } from '@tabler/icons-react-native';
 
@@ -33,7 +33,7 @@ type TablerIcon = React.ComponentType<{ size?: number; color?: string; strokeWid
 
 const TAB_ICONS: Record<keyof MainTabParamList, { active: TablerIcon; inactive: TablerIcon }> = {
   Library:    { active: IconBooks,           inactive: IconBooks },
-  Shelves:    { active: IconBookmarkFilled,  inactive: IconBookmark },
+  Shelves:    { active: IconColumns3Filled,  inactive: IconColumns3 },
   Highlights: { active: IconHighlight,       inactive: IconHighlight },
   Settings:   { active: IconSettings,        inactive: IconSettings },
 };

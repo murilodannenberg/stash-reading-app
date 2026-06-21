@@ -4,16 +4,14 @@ import {
   TouchableOpacity, Alert, Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import ImageViewing from 'react-native-image-viewing';
 import {
-  IconPlus, IconFile, IconFileTypePdf, IconPhoto,
+  IconFile, IconFileTypePdf, IconPhoto,
   IconFileTypeDoc, IconTrash,
 } from '@tabler/icons-react-native';
 import { useFileStore } from '../stores/fileStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
-import { copyFileToStorage } from '../database';
 import { StashFile, FileType } from '../types';
 import { ActionSheet } from '../components/ActionSheet';
 import { spacing, radius, typography } from '../theme/colors';
@@ -32,42 +30,15 @@ function formatBytes(bytes: number): string {
 }
 
 export function FilesScreen() {
-  const { files, loadFiles, importFile, deleteFile } = useFileStore();
+  const { files, loadFiles, deleteFile } = useFileStore();
   const { prefs: appTheme } = useAppThemeStore();
   const colors = getHomeColors(appTheme.homeTheme);
-  const accent = appTheme.accentColor;
 
   const [sheetFile, setSheetFile] = useState<StashFile | null>(null);
   const [imageViewerUris, setImageViewerUris] = useState<{ uri: string }[]>([]);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
-  const [importing, setImporting] = useState(false);
 
   useFocusEffect(useCallback(() => { loadFiles(); }, [loadFiles]));
-
-  const handleImport = useCallback(async () => {
-    if (importing) return;
-    setImporting(true);
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'image/*', 'text/*'],
-        copyToCacheDirectory: true,
-      });
-      if (result.canceled || !result.assets?.length) return;
-
-      const asset = result.assets[0];
-      const name = asset.name;
-      const mimeType = asset.mimeType ?? '';
-      const type = detectType(name, mimeType);
-      const localPath = await copyFileToStorage(asset.uri, name);
-      const sizeBytes = asset.size ?? 0;
-
-      await importFile({ name, type, path: localPath, size_bytes: sizeBytes, folder_id: null });
-    } catch {
-      Alert.alert('Erro', 'Não foi possível importar o arquivo.');
-    } finally {
-      setImporting(false);
-    }
-  }, [importing, importFile]);
 
   const handleOpen = useCallback(async (file: StashFile) => {
     if (file.type === 'image') {
@@ -147,20 +118,11 @@ export function FilesScreen() {
             <IconFile size={48} color={colors.textMuted} strokeWidth={1} />
             <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>Nenhum arquivo</Text>
             <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-              Toque no + para importar um PDF, imagem ou texto
+              Imagens salvas dos artigos aparecem aqui
             </Text>
           </View>
         }
       />
-
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: accent, shadowColor: accent }, importing && { opacity: 0.7 }]}
-        activeOpacity={0.8}
-        onPress={handleImport}
-        disabled={importing}
-      >
-        <IconPlus size={26} color="#fff" strokeWidth={2} />
-      </TouchableOpacity>
 
       <ActionSheet
         visible={sheetFile != null}
@@ -210,12 +172,4 @@ const styles = StyleSheet.create({
   emptyWrap: { alignItems: 'center', marginTop: 80, paddingHorizontal: spacing.xl },
   emptyTitle: { ...typography.heading, marginTop: spacing.lg },
   emptySubtitle: { ...typography.body, marginTop: spacing.xs, textAlign: 'center' },
-  fab: {
-    position: 'absolute', bottom: 24, right: spacing.lg,
-    width: 54, height: 54, borderRadius: 27,
-    justifyContent: 'center', alignItems: 'center',
-    elevation: 6,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8,
-  },
 });

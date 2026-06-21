@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
-import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, AppState } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, AppState, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -10,7 +10,30 @@ import { AppNavigator } from './src/navigation';
 import { useAppThemeStore } from './src/stores/appThemeStore';
 import { useShareStore } from './src/stores/shareStore';
 import { getSharedUrl, clearSharedUrl, extractUrl } from './src/services/shareIntent';
-import { palette } from './src/theme/colors';
+import { Colors } from './src/theme/tokens';
+
+function SplashLogo() {
+  const scale = useRef(new Animated.Value(0.7)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scale, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+    ]).start();
+  }, [opacity, scale]);
+
+  return (
+    <View style={styles.center}>
+      <Animated.View style={[styles.logoWrap, { opacity, transform: [{ scale }] }]}>
+        <View style={styles.logoMark}>
+          <Text style={styles.logoLetter}>S</Text>
+        </View>
+        <Text style={styles.logoName}>Stash</Text>
+      </Animated.View>
+    </View>
+  );
+}
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -67,12 +90,7 @@ export default function App() {
   }
 
   if (!ready) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={palette.primary} size="large" />
-        <Text style={styles.loadingText}>Carregando Stash…</Text>
-      </View>
-    );
+    return <SplashLogo />;
   }
 
   return (
@@ -85,9 +103,23 @@ export default function App() {
 
 const styles = StyleSheet.create({
   center: {
-    flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff',
+    flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.papel,
   },
-  loadingText: { marginTop: 12, color: '#6b7280', fontSize: 14 },
+  logoWrap: { alignItems: 'center', gap: 16 },
+  logoMark: {
+    width: 80, height: 80, borderRadius: 22,
+    backgroundColor: Colors.ambar + '18',
+    borderWidth: 1.5, borderColor: Colors.ambar + '40',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  logoLetter: {
+    fontSize: 40, fontWeight: '700', color: Colors.ambar,
+    fontFamily: 'Georgia', letterSpacing: -1,
+  },
+  logoName: {
+    fontSize: 22, fontWeight: '700', color: Colors.tinta,
+    fontFamily: 'Georgia', letterSpacing: -0.5,
+  },
   errorTitle: { fontSize: 18, fontWeight: '700', color: '#ef4444', marginBottom: 8 },
   errorText: { fontSize: 14, color: '#374151', textAlign: 'center', paddingHorizontal: 32 },
 });

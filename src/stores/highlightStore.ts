@@ -17,6 +17,7 @@ interface HighlightState {
     selected_text: string;
     start_offset: number;
     end_offset: number;
+    color?: string;
   }) => Promise<Highlight>;
 
   removeHighlight: (id: string) => Promise<void>;
@@ -37,7 +38,7 @@ export const useHighlightStore = create<HighlightState>((set, get) => ({
   },
 
   addHighlight: async (params) => {
-    const highlight = await db.createHighlight(params);
+    const highlight = await db.createHighlight({ ...params, color: params.color ?? '#fde047' });
     set((state) => ({
       articleHighlights: [...state.articleHighlights, highlight].sort(
         (a, b) => a.start_offset - b.start_offset,

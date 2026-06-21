@@ -2,27 +2,40 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   View, Text, StyleSheet,
   ActivityIndicator, TouchableOpacity, Modal, Share,
+  Alert, TextInput, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import {
   IconShare2, IconTextSize, IconAlertCircle,
   IconMinus, IconPlus, IconLineHeight, IconCheck,
   IconHighlight, IconBookmark, IconBookmarkFilled,
+  IconPencil, IconX,
 } from '@tabler/icons-react-native';
 import WebView from 'react-native-webview';
 import type { WebViewMessageEvent } from 'react-native-webview';
-import { getArticleById, markAsRead } from '../database';
+import { File, Directory, Paths } from 'expo-file-system';
+import { getArticleById, markAsRead, updateArticleContent } from '../database';
 import { Article, ReadingPreferences, RootStackParamList } from '../types';
 import { useReadingPrefsStore } from '../stores/readingPrefsStore';
 import { useAppThemeStore } from '../stores/appThemeStore';
 import { useHighlightStore } from '../stores/highlightStore';
 import { useArticleStore } from '../stores/articleStore';
+import { useFileStore } from '../stores/fileStore';
 import { READING_THEMES, ReadingThemeKey, FONT_FAMILIES, FontFamilyKey } from '../theme/reading';
 import { palette, spacing, radius } from '../theme/colors';
+import { generateId } from '../utils/id';
 
 type Route = RouteProp<RootStackParamList, 'Reader'>;
 
 const FONT_SIZES = [14, 15, 16, 17, 18, 20, 22, 24];
+
+const MARKER_COLORS = [
+  { color: '#fde047', label: 'Amarelo' },
+  { color: '#fda4af', label: 'Rosa' },
+  { color: '#93c5fd', label: 'Azul' },
+  { color: '#86efac', label: 'Verde' },
+  { color: '#fdba74', label: 'Laranja' },
+];
 
 function escHtml(s: string): string {
   return s
@@ -42,6 +55,8 @@ function buildArticleHtml(article: Article, prefs: ReadingPreferences, accent: s
     article.author,
     article.reading_time_min != null ? `${article.reading_time_min} min` : null,
   ].filter(Boolean).join(' · ');
+
+  const markerColors = MARKER_COLORS.map((m) => m.color);
 
   return `<!DOCTYPE html>
 <html><head>
@@ -68,7 +83,7 @@ h2{font-size:var(--fs-2);font-weight:700;margin:20px 0 8px}
 h3{font-size:var(--fs-3);font-weight:600;margin:16px 0 6px}
 h4,h5,h6{font-size:var(--fs);font-weight:600;margin:12px 0 4px}
 a{color:var(--ac);text-decoration:underline}
-img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:6px}
+img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:6px;cursor:pointer}
 figure{margin:12px 0}
 figcaption{font-size:var(--fs-s);opacity:.6;margin-top:4px}
 blockquote{border-left:3px solid currentColor;opacity:.7;padding-left:14px;margin:12px 0;font-style:italic}
@@ -81,39 +96,87 @@ th,td{border:1px solid rgba(128,128,128,.3);padding:6px 8px;text-align:left}
 th{font-weight:600}
 ul,ol{margin:0 0 12px;padding-left:24px}
 li{margin-bottom:4px}
-#sb{position:fixed;bottom:20px;left:16px;right:16px;background:var(--ac);color:#fff;
-  padding:13px 20px;border-radius:16px;font-size:15px;font-weight:600;
-  display:none;text-align:center;font-family:sans-serif;
-  box-shadow:0 4px 20px rgba(0,0,0,.25);z-index:9999;
-  user-select:none;-webkit-user-select:none;cursor:pointer}
+#picker{position:fixed;bottom:20px;left:16px;right:16px;
+  background:rgba(30,30,30,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  padding:12px 16px;border-radius:20px;
+  display:none;align-items:center;justify-content:center;gap:12px;z-index:9999;
+  user-select:none;-webkit-user-select:none;}
+.dot{width:36px;height:36px;border-radius:18px;cursor:pointer;
+  border:2.5px solid rgba(255,255,255,.3);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .1s;}
+.dot:active{transform:scale(0.88);}
+#cancel-btn{width:32px;height:32px;border-radius:16px;cursor:pointer;
+  background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;
+  margin-left:4px;font-size:18px;color:#fff;font-weight:300;line-height:1;}
 </style>
 </head><body>
 <h1 class="title">${escHtml(article.title)}</h1>
 ${meta ? `<p class="meta">${meta}</p>` : ''}
 <hr>
 ${content}
-<div id="sb">✦ Salvar destaque</div>
+<div id="picker">
+  ${markerColors.map((c) => `<div class="dot" data-color="${c}" style="background:${c}"></div>`).join('')}
+  <div id="cancel-btn">✕</div>
+</div>
 <script>
 (function(){
-  var sb=document.getElementById('sb'),t=null,last='';
-  function show(){clearTimeout(t);sb.style.display='block';}
-  function hide(){t=setTimeout(function(){sb.style.display='none';},250);}
+  var picker=document.getElementById('picker'),t=null,last='',imgPressTimer=null;
+  function show(){clearTimeout(t);picker.style.display='flex';}
+  function hide(){t=setTimeout(function(){picker.style.display='none';},200);}
   document.addEventListener('selectionchange',function(){
     var s=window.getSelection(),tx=s?s.toString().trim():'';
-    last=tx;if(tx.length>1){show();}else{hide();}
+    last=tx;
+    if(tx.length>1){show();}else{hide();}
   });
-  function send(e){
-    e.preventDefault();e.stopPropagation();
-    var s=window.getSelection(),tx=s?s.toString().trim():last;
-    if(tx.length>0){
-      window.ReactNativeWebView.postMessage(JSON.stringify({type:'highlight',text:tx}));
-      sb.style.display='none';
-      if(s&&s.removeAllRanges)s.removeAllRanges();
-      last='';
-    }
-  }
-  sb.addEventListener('touchstart',send,{passive:false});
-  sb.addEventListener('mousedown',send);
+  picker.querySelectorAll('.dot').forEach(function(dot){
+    dot.addEventListener('touchstart',function(e){
+      e.preventDefault();e.stopPropagation();
+      var s=window.getSelection(),tx=s?s.toString().trim():last;
+      var color=dot.getAttribute('data-color');
+      if(tx.length>0&&color){
+        window.ReactNativeWebView.postMessage(JSON.stringify({type:'highlight',text:tx,color:color}));
+        picker.style.display='none';
+        if(s&&s.removeAllRanges)s.removeAllRanges();
+        last='';
+      }
+    },{passive:false});
+    dot.addEventListener('mousedown',function(e){
+      e.preventDefault();e.stopPropagation();
+      var s=window.getSelection(),tx=s?s.toString().trim():last;
+      var color=dot.getAttribute('data-color');
+      if(tx.length>0&&color){
+        window.ReactNativeWebView.postMessage(JSON.stringify({type:'highlight',text:tx,color:color}));
+        picker.style.display='none';
+        if(s&&s.removeAllRanges)s.removeAllRanges();
+        last='';
+      }
+    });
+  });
+  document.getElementById('cancel-btn').addEventListener('touchstart',function(e){
+    e.preventDefault();hide();if(window.getSelection())window.getSelection().removeAllRanges();last='';
+  },{passive:false});
+
+  // Scroll progress
+  window.addEventListener('scroll',function(){
+    var dh=document.documentElement.scrollHeight-window.innerHeight;
+    if(dh<=0)return;
+    var p=Math.min(1,Math.max(0,window.scrollY/dh));
+    window.ReactNativeWebView.postMessage(JSON.stringify({type:'scroll',progress:p}));
+  },{passive:true});
+
+  // Image long-press to save
+  document.querySelectorAll('img').forEach(function(img){
+    img.addEventListener('touchstart',function(){
+      var src=img.getAttribute('src')||img.getAttribute('data-src')||'';
+      if(!src)return;
+      imgPressTimer=setTimeout(function(){
+        window.ReactNativeWebView.postMessage(JSON.stringify({type:'save_image',url:src}));
+      },600);
+    },{passive:true});
+    img.addEventListener('touchend',function(){clearTimeout(imgPressTimer);},{passive:true});
+    img.addEventListener('touchmove',function(){clearTimeout(imgPressTimer);},{passive:true});
+  });
 })();
 </script>
 </body></html>`;
@@ -131,6 +194,10 @@ export function ReaderScreen() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
   const [webViewReady, setWebViewReady] = useState(false);
+  const [readProgress, setReadProgress] = useState(0);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editText, setEditText] = useState('');
+  const [saving, setSaving] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const webViewRef = useRef<any>(null);
@@ -139,6 +206,7 @@ export function ReaderScreen() {
   const accent = useAppThemeStore((s) => s.prefs.accentColor);
   const { articleHighlights, loadArticleHighlights, addHighlight } = useHighlightStore();
   const { toggleFavorite } = useArticleStore();
+  const { importFile } = useFileStore();
 
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
@@ -154,14 +222,12 @@ export function ReaderScreen() {
     loadArticleHighlights(articleId);
   }, [articleId, loadArticleHighlights]);
 
-  // HTML é construído uma vez por artigo; mudanças de prefs são injetadas via JS
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const articleSource = useMemo(
     () => (article ? { html: buildArticleHtml(article, prefs, accent) } : null),
-    [article], // prefs e accent excluídos intencionalmente — atualizados via injectJavaScript
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [article],
   );
 
-  // Atualiza CSS vars no WebView quando preferências mudam (sem recarregar a página)
   useEffect(() => {
     if (!webViewReady || !webViewRef.current) return;
     const ff = FONT_FAMILIES[prefs.fontFamily]?.value ?? 'sans-serif';
@@ -196,24 +262,73 @@ export function ReaderScreen() {
     });
   }, [article]);
 
+  const handleSaveImage = useCallback(async (url: string) => {
+    if (!url || !url.startsWith('http')) return;
+    try {
+      const ext = url.split('?')[0].split('.').pop()?.toLowerCase() ?? 'jpg';
+      const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
+      const safeName = `img_${generateId()}.${safeExt}`;
+      const imagesDir = new Directory(Paths.document, 'stash_files');
+      if (!imagesDir.exists) imagesDir.create();
+      const destFile = new File(imagesDir, safeName);
+      const downloaded = await File.downloadFileAsync(url, destFile);
+      await importFile({ name: safeName, type: 'image', path: downloaded.uri, size_bytes: 0, folder_id: null });
+      Alert.alert('Imagem salva', 'Imagem adicionada em Arquivos.');
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar a imagem.');
+    }
+  }, [importFile]);
+
   const handleMessage = useCallback(async (event: WebViewMessageEvent) => {
     try {
-      const data = JSON.parse(event.nativeEvent.data) as { type: string; text: string };
-      if (data.type !== 'highlight' || !article) return;
-      const text = data.text.trim();
-      if (!text) return;
-      const plain = article.content_text ?? '';
-      const idx = plain.toLowerCase().indexOf(text.toLowerCase());
-      await addHighlight({
-        article_id: article.id,
-        selected_text: text,
-        start_offset: idx >= 0 ? idx : 0,
-        end_offset: idx >= 0 ? idx + text.length : text.length,
-      });
-      setSavedFeedback(true);
-      setTimeout(() => setSavedFeedback(false), 2000);
+      const data = JSON.parse(event.nativeEvent.data) as { type: string; text?: string; color?: string; progress?: number; url?: string };
+      if (data.type === 'scroll' && data.progress != null) {
+        setReadProgress(data.progress);
+        return;
+      }
+      if (data.type === 'save_image' && data.url) {
+        handleSaveImage(data.url);
+        return;
+      }
+      if (data.type === 'highlight' && article && data.text) {
+        const text = data.text.trim();
+        if (!text) return;
+        const plain = article.content_text ?? '';
+        const idx = plain.toLowerCase().indexOf(text.toLowerCase());
+        await addHighlight({
+          article_id: article.id,
+          selected_text: text,
+          start_offset: idx >= 0 ? idx : 0,
+          end_offset: idx >= 0 ? idx + text.length : text.length,
+          color: data.color ?? '#fde047',
+        });
+        setSavedFeedback(true);
+        setTimeout(() => setSavedFeedback(false), 2000);
+      }
     } catch { /* ignore parse/save errors */ }
-  }, [article, addHighlight]);
+  }, [article, addHighlight, handleSaveImage]);
+
+  const handleOpenEdit = useCallback(() => {
+    if (!article) return;
+    setEditText(article.content_text ?? '');
+    setShowEditModal(true);
+  }, [article]);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!article) return;
+    setSaving(true);
+    try {
+      const newText = editText.trim();
+      const newHtml = newText.split('\n').filter(Boolean).map((l) => `<p>${l}</p>`).join('');
+      await updateArticleContent(article.id, newText, newHtml);
+      setArticle((prev) => prev ? { ...prev, content_text: newText, content_html: newHtml } : prev);
+      setShowEditModal(false);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar as alterações.');
+    } finally {
+      setSaving(false);
+    }
+  }, [article, editText]);
 
   const toggleSettings = useCallback(() => setShowSettings((v) => !v), []);
 
@@ -243,13 +358,16 @@ export function ReaderScreen() {
               )}
             </View>
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleOpenEdit} style={headerStyles.btn}>
+            <IconPencil size={20} color={accent} strokeWidth={1.75} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={toggleSettings} style={headerStyles.btn}>
             <IconTextSize size={20} color={accent} strokeWidth={1.75} />
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [navigation, toggleSettings, handleShare, handleToggleFavorite, accent, articleHighlights.length, isFavorite]);
+  }, [navigation, toggleSettings, handleShare, handleToggleFavorite, handleOpenEdit, accent, articleHighlights.length, isFavorite]);
 
   if (loading) {
     return (
@@ -273,7 +391,12 @@ export function ReaderScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: prefs.backgroundColor }]}>
-      {/* @ts-ignore — tsc resolve para o stub web; Metro usa WebView.android.tsx corretamente */}
+      {/* Progress bar */}
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressBar, { width: `${readProgress * 100}%`, backgroundColor: accent }]} />
+      </View>
+
+      {/* @ts-ignore */}
       <WebView
         ref={webViewRef}
         source={articleSource}
@@ -294,6 +417,7 @@ export function ReaderScreen() {
         </View>
       )}
 
+      {/* Reading settings panel */}
       <Modal visible={showSettings} transparent animationType="slide" onRequestClose={toggleSettings}>
         <TouchableOpacity style={settingsStyles.overlay} activeOpacity={1} onPress={toggleSettings}>
           <View style={settingsStyles.panel}>
@@ -403,13 +527,49 @@ export function ReaderScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Text edit modal */}
+      <Modal visible={showEditModal} transparent animationType="slide" onRequestClose={() => setShowEditModal(false)}>
+        <KeyboardAvoidingView
+          style={editStyles.wrap}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={editStyles.panel}>
+            <View style={editStyles.header}>
+              <Text style={editStyles.title}>Editar texto</Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <IconX size={20} color={palette.gray500} strokeWidth={1.75} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={editStyles.scrollArea} keyboardShouldPersistTaps="handled">
+              <TextInput
+                style={editStyles.input}
+                value={editText}
+                onChangeText={setEditText}
+                multiline
+                textAlignVertical="top"
+                placeholder="Texto do artigo..."
+                placeholderTextColor={palette.gray400}
+              />
+            </ScrollView>
+            <TouchableOpacity
+              style={[editStyles.saveBtn, { backgroundColor: accent }, saving && { opacity: 0.6 }]}
+              onPress={handleSaveEdit}
+              disabled={saving}
+              activeOpacity={0.8}
+            >
+              <Text style={editStyles.saveBtnText}>{saving ? 'Salvando…' : 'Salvar alterações'}</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
 
 const headerStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
-  btn: { paddingHorizontal: 10, paddingVertical: 6 },
+  btn: { paddingHorizontal: 8, paddingVertical: 6 },
   badge: {
     position: 'absolute', top: -4, right: -4,
     minWidth: 14, height: 14, borderRadius: 7,
@@ -425,6 +585,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorText: { fontSize: 16, color: palette.gray500, marginTop: spacing.md, marginBottom: spacing.lg },
   backLink: { fontSize: 16, fontWeight: '600' },
+  progressTrack: { height: 2, backgroundColor: 'transparent' },
+  progressBar: { height: 2, borderRadius: 1 },
   toast: {
     position: 'absolute',
     top: 12,
@@ -506,4 +668,33 @@ const settingsStyles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'center',
   },
   themeBtnText: { fontSize: 13, fontWeight: '500' },
+});
+
+const editStyles = StyleSheet.create({
+  wrap: { flex: 1, justifyContent: 'flex-end' },
+  panel: {
+    backgroundColor: palette.white,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: 40,
+    maxHeight: '85%',
+    borderTopWidth: 1,
+    borderColor: palette.gray200,
+  },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
+  title: { fontSize: 17, fontWeight: '700', color: palette.gray900 },
+  scrollArea: { maxHeight: 400, marginBottom: spacing.lg },
+  input: {
+    fontSize: 15, color: palette.gray900, lineHeight: 22,
+    minHeight: 200,
+  },
+  saveBtn: {
+    borderRadius: radius.lg, paddingVertical: 14, alignItems: 'center',
+  },
+  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
