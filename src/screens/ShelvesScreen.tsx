@@ -1,28 +1,34 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet,
-  TouchableOpacity, Alert, Modal, Pressable, TextInput,
+  TouchableOpacity, Alert, Modal, Pressable, TextInput, ScrollView,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { IconBooks, IconChevronRight, IconPlus, IconTrash } from '@tabler/icons-react-native';
+import { IconChevronRight, IconPlus, IconTrash, IconEdit } from '@tabler/icons-react-native';
 import { useFolderStore } from '../stores/folderStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { Folder, RootStackParamList } from '../types';
 import { spacing, radius, typography } from '../theme/colors';
 import { ActionSheet } from '../components/ActionSheet';
+import { ShelfIcon, SHELF_ICONS } from '../components/ShelfIcon';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
+// Modal inner width: 300 - 2*32 (padding) = 236px, 5 columns
+const ICON_CELL = Math.floor(236 / 5);
+
 export function ShelvesScreen() {
   const navigation = useNavigation<Nav>();
-  const { folders, loadFolders, createFolder, deleteFolder } = useFolderStore();
+  const { folders, loadFolders, createFolder, updateFolder, deleteFolder } = useFolderStore();
   const { prefs: appTheme } = useAppThemeStore();
   const colors = getHomeColors(appTheme.homeTheme);
   const accent = appTheme.accentColor;
 
   const [showModal, setShowModal] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [editFolder, setEditFolder] = useState<Folder | null>(null);
+  const [formName, setFormName] = useState('');
+  const [formIcon, setFormIcon] = useState('books');
   const [sheetFolder, setSheetFolder] = useState<Folder | null>(null);
 
   useFocusEffect(
@@ -31,12 +37,29 @@ export function ShelvesScreen() {
     }, [loadFolders])
   );
 
-  const handleCreate = useCallback(async () => {
-    if (!newName.trim()) return;
-    await createFolder(newName.trim());
-    setNewName('');
+  const openCreateModal = useCallback(() => {
+    setEditFolder(null);
+    setFormName('');
+    setFormIcon('books');
+    setShowModal(true);
+  }, []);
+
+  const openEditModal = useCallback((folder: Folder) => {
+    setEditFolder(folder);
+    setFormName(folder.name);
+    setFormIcon(folder.icon ?? 'books');
+    setShowModal(true);
+  }, []);
+
+  const handleConfirm = useCallback(async () => {
+    if (!formName.trim()) return;
+    if (editFolder) {
+      await updateFolder(editFolder.id, formName.trim(), formIcon);
+    } else {
+      await createFolder(formName.trim(), null, formIcon);
+    }
     setShowModal(false);
-  }, [newName, createFolder]);
+  }, [formName, formIcon, editFolder, createFolder, updateFolder]);
 
   const handleLongPress = useCallback((folder: Folder) => {
     setSheetFolder(folder);
@@ -50,7 +73,7 @@ export function ShelvesScreen() {
       onLongPress={() => handleLongPress(item)}
     >
       <View style={[styles.iconWrap, { backgroundColor: accent + '18' }]}>
-        <IconBooks size={22} color={accent} strokeWidth={1.5} />
+        <ShelfIcon iconKey={item.icon ?? 'books'} size={22} color={accent} strokeWidth={1.5} />
       </View>
       <View style={styles.cardBody}>
         <Text style={[styles.cardName, { color: colors.text }]} numberOfLines={1}>
@@ -70,7 +93,7 @@ export function ShelvesScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <IconBooks size={48} color={colors.border} strokeWidth={1} />
+            <ShelfIcon iconKey="books" size={48} color={colors.border} strokeWidth={1} />
             <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
               Nenhuma estante ainda
             </Text>
@@ -85,7 +108,7 @@ export function ShelvesScreen() {
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: accent, shadowColor: accent }]}
         activeOpacity={0.85}
-        onPress={() => setShowModal(true)}
+        onPress={openCreateModal}
       >
         <IconPlus size={26} color="#fff" strokeWidth={2} />
       </TouchableOpacity>
@@ -96,32 +119,74 @@ export function ShelvesScreen() {
         title={sheetFolder?.name}
         actions={sheetFolder ? [
           {
+            label: 'Editar estante',
+            Icon: IconEdit,
+            onPress: () => openEditModal(sheetFolder),
+          },
+          {
             label: 'Excluir estante',
             style: 'destructive',
             Icon: IconTrash,
-            onPress: () => Alert.alert('Remover estante', `Remover "${sheetFolder.name}" e todo seu conteúdo?`, [
-              { text: 'Cancelar', style: 'cancel' },
-              { text: 'Remover', style: 'destructive', onPress: () => deleteFolder(sheetFolder.id) },
-            ]),
+            onPress: () => Alert.alert(
+              'Remover estante',
+              `Remover "${sheetFolder.name}" e todo seu conteúdo?`,
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Remover', style: 'destructive', onPress: () => deleteFolder(sheetFolder.id) },
+              ],
+            ),
           },
         ] : []}
       />
 
-      {/* Modal de nova estante */}
+      {/* Modal — criar / editar estante */}
       <Modal visible={showModal} transparent animationType="fade">
         <Pressable style={styles.overlay} onPress={() => setShowModal(false)}>
           <Pressable style={[styles.modal, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Nova estante</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {editFolder ? 'Editar estante' : 'Nova estante'}
+            </Text>
+
+            {/* Picker de ícones */}
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Ícone</Text>
+            <ScrollView
+              style={styles.iconGridWrap}
+              contentContainerStyle={styles.iconGrid}
+              showsVerticalScrollIndicator={false}
+            >
+              {SHELF_ICONS.map(({ key, Icon }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.iconCell,
+                    { borderColor: 'transparent' },
+                    formIcon === key && { backgroundColor: accent + '22', borderColor: accent },
+                  ]}
+                  onPress={() => setFormIcon(key)}
+                  activeOpacity={0.7}
+                >
+                  <Icon
+                    size={22}
+                    color={formIcon === key ? accent : colors.textSecondary}
+                    strokeWidth={1.5}
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Nome */}
+            <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Nome</Text>
             <TextInput
               style={[styles.modalInput, { borderColor: colors.border, color: colors.text }]}
               placeholder="Nome da estante"
               placeholderTextColor={colors.textMuted}
-              value={newName}
-              onChangeText={setNewName}
-              autoFocus
+              value={formName}
+              onChangeText={setFormName}
+              autoFocus={!editFolder}
               returnKeyType="done"
-              onSubmitEditing={handleCreate}
+              onSubmitEditing={handleConfirm}
             />
+
             <View style={styles.modalBtns}>
               <TouchableOpacity
                 style={styles.btnCancel}
@@ -131,9 +196,11 @@ export function ShelvesScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.btnConfirm, { backgroundColor: accent }]}
-                onPress={handleCreate}
+                onPress={handleConfirm}
               >
-                <Text style={styles.btnConfirmText}>Criar</Text>
+                <Text style={styles.btnConfirmText}>
+                  {editFolder ? 'Salvar' : 'Criar'}
+                </Text>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -182,6 +249,29 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   modalTitle: { ...typography.heading, marginBottom: spacing.lg },
+
+  modalLabel: {
+    ...typography.label,
+    marginBottom: spacing.xs,
+  },
+  iconGridWrap: {
+    maxHeight: 188,
+    marginBottom: spacing.lg,
+  },
+  iconGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  iconCell: {
+    width: ICON_CELL,
+    height: ICON_CELL,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: radius.sm,
+    borderWidth: 1.5,
+    marginBottom: 2,
+  },
+
   modalInput: {
     borderWidth: 1, borderRadius: radius.md,
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,

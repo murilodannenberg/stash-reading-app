@@ -21,21 +21,29 @@ export async function getFolderById(id: string): Promise<Folder | null> {
   );
 }
 
-export async function createFolder(name: string, parentId: string | null = null): Promise<Folder> {
+export async function createFolder(
+  name: string,
+  parentId: string | null = null,
+  icon: string = 'books',
+): Promise<Folder> {
   const db = getDatabase();
   const id = generateId();
   const now = nowISO();
   await db.runAsync(
-    `INSERT INTO folders (id, name, parent_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?)`,
-    [id, name, parentId, now, now]
+    `INSERT INTO folders (id, name, icon, parent_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [id, name, icon, parentId, now, now]
   );
-  return { id, name, parent_id: parentId, created_at: now, updated_at: now, deleted_at: null };
+  return { id, name, icon, parent_id: parentId, created_at: now, updated_at: now, deleted_at: null };
 }
 
-export async function updateFolder(id: string, name: string): Promise<void> {
+export async function updateFolder(id: string, name: string, icon?: string): Promise<void> {
   const db = getDatabase();
-  await db.runAsync('UPDATE folders SET name = ? WHERE id = ?', [name, id]);
+  if (icon !== undefined) {
+    await db.runAsync('UPDATE folders SET name = ?, icon = ? WHERE id = ?', [name, icon, id]);
+  } else {
+    await db.runAsync('UPDATE folders SET name = ? WHERE id = ?', [name, id]);
+  }
 }
 
 export async function deleteFolder(id: string): Promise<void> {

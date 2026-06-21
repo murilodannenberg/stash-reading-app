@@ -6,9 +6,10 @@ import {
 import { useRoute, useNavigation, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
-  IconBooks, IconFileText, IconBookmark, IconBookmarkFilled,
+  IconFileText, IconBookmark, IconBookmarkFilled,
   IconShare2, IconPlus, IconTrash, IconArchive, IconArchiveOff, IconTag,
 } from '@tabler/icons-react-native';
+import { ShelfIcon } from '../components/ShelfIcon';
 import { useArticleStore } from '../stores/articleStore';
 import { useFolderStore } from '../stores/folderStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
@@ -49,7 +50,7 @@ export function FolderDetailScreen() {
       onLongPress={() => setSheetFolder(item)}
     >
       <View style={[styles.folderIconWrap, { backgroundColor: accent + '18' }]}>
-        <IconBooks size={18} color={accent} strokeWidth={1.5} />
+        <ShelfIcon iconKey={item.icon ?? 'books'} size={18} color={accent} strokeWidth={1.5} />
       </View>
       <Text style={[styles.folderName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
     </TouchableOpacity>

@@ -1,13 +1,13 @@
 import * as FileSystem from 'expo-file-system';
-import { Directory, Paths } from 'expo-file-system';
+import { File, Directory, Paths } from 'expo-file-system';
 import { getDatabase } from '../connection';
 import { StashFile, FileType } from '../../types';
 import { generateId, nowISO } from '../../utils/id';
 
-const FILES_DIR = new Directory(Paths.document, 'files');
-
-function ensureFilesDir() {
-  if (!FILES_DIR.exists) FILES_DIR.create();
+function getFilesDir(): Directory {
+  const dir = new Directory(Paths.document, 'files');
+  if (!dir.exists) dir.create();
+  return dir;
 }
 
 /** Copy a picked file into app-local storage and return its persistent URI. */
@@ -15,15 +15,21 @@ export async function copyFileToStorage(
   sourceUri: string,
   fileName: string,
 ): Promise<string> {
-  ensureFilesDir();
-  const baseUri = FILES_DIR.uri;
-  const candidate = baseUri + fileName;
-  // If a file with the same name already exists, suffix with a timestamp
-  const destUri = (await FileSystem.getInfoAsync(candidate)).exists
-    ? baseUri + `${Date.now()}_${fileName}`
-    : candidate;
-  await FileSystem.copyAsync({ from: sourceUri, to: destUri });
-  return destUri;
+  const filesDir = getFilesDir();
+
+  // Sanitize: keep extension intact, replace special chars in base name
+  const lastDot = fileName.lastIndexOf('.');
+  const ext = lastDot !== -1 ? fileName.slice(lastDot) : '';
+  const base = lastDot !== -1 ? fileName.slice(0, lastDot) : fileName;
+  const safeName = base.replace(/[^\w-]/g, '_') + ext;
+
+  // Use v2 File API for path construction (handles URI encoding correctly)
+  const candidate = new File(filesDir, safeName);
+  const finalName = candidate.exists ? `${Date.now()}_${safeName}` : safeName;
+  const destFile = new File(filesDir, finalName);
+
+  await FileSystem.copyAsync({ from: sourceUri, to: destFile.uri });
+  return destFile.uri;
 }
 
 export async function deleteFileFromStorage(localUri: string): Promise<void> {

@@ -7,8 +7,8 @@ interface FolderState {
   loading: boolean;
   // Actions
   loadFolders: (parentId?: string | null) => Promise<void>;
-  createFolder: (name: string, parentId?: string | null) => Promise<Folder>;
-  updateFolder: (id: string, name: string) => Promise<void>;
+  createFolder: (name: string, parentId?: string | null, icon?: string) => Promise<Folder>;
+  updateFolder: (id: string, name: string, icon?: string) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
 }
 
@@ -26,16 +26,18 @@ export const useFolderStore = create<FolderState>((set) => ({
     }
   },
 
-  createFolder: async (name, parentId = null) => {
-    const folder = await db.createFolder(name, parentId);
+  createFolder: async (name, parentId = null, icon = 'books') => {
+    const folder = await db.createFolder(name, parentId, icon);
     set((state) => ({ folders: [...state.folders, folder] }));
     return folder;
   },
 
-  updateFolder: async (id, name) => {
-    await db.updateFolder(id, name);
+  updateFolder: async (id, name, icon) => {
+    await db.updateFolder(id, name, icon);
     set((state) => ({
-      folders: state.folders.map((f) => (f.id === id ? { ...f, name } : f)),
+      folders: state.folders.map((f) =>
+        f.id === id ? { ...f, name, ...(icon !== undefined ? { icon } : {}) } : f
+      ),
     }));
   },
 

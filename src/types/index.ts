@@ -3,6 +3,7 @@
 export interface Folder {
   id: string;
   name: string;
+  icon: string;
   parent_id: string | null;
   created_at: string;
   updated_at: string;
