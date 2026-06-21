@@ -79,6 +79,19 @@ export function ReaderScreen() {
     });
   }, [article]);
 
+  const plainText = useMemo(
+    () => article?.content_text ?? (article?.content_html ? htmlToPlainText(article.content_html) : ''),
+    [article],
+  );
+
+  const matchInfo = useMemo(() => {
+    const q = pastedText.trim();
+    if (!q || !plainText) return null;
+    const idx = plainText.toLowerCase().indexOf(q.toLowerCase());
+    if (idx === -1) return null;
+    return { start: idx, end: idx + q.length };
+  }, [pastedText, plainText]);
+
   const handleOpenHighlightModal = useCallback(() => {
     setPastedText('');
     setShowHighlightModal(true);
@@ -157,19 +170,6 @@ export function ReaderScreen() {
       </View>
     );
   }
-
-  const plainText = useMemo(
-    () => article?.content_text ?? (article?.content_html ? htmlToPlainText(article.content_html) : ''),
-    [article],
-  );
-
-  const matchInfo = useMemo(() => {
-    const q = pastedText.trim();
-    if (!q || !plainText) return null;
-    const idx = plainText.toLowerCase().indexOf(q.toLowerCase());
-    if (idx === -1) return null;
-    return { start: idx, end: idx + q.length };
-  }, [pastedText, plainText]);
 
   const isDark = prefs.backgroundColor === DARK_BG;
   const fontFamilyValue = FONT_FAMILIES[prefs.fontFamily]?.value;
