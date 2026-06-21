@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TextInput,
   ActivityIndicator, TouchableOpacity, useWindowDimensions, Modal, Share, Alert,
-  NativeSyntheticEvent, TextInputSelectionChangeEventData, SafeAreaView,
+  SafeAreaView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import {
@@ -39,7 +39,7 @@ export function ReaderScreen() {
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showHighlightModal, setShowHighlightModal] = useState(false);
-  const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
+  const [pastedText, setPastedText] = useState('');
   const [saving, setSaving] = useState(false);
   const { width } = useWindowDimensions();
 
@@ -80,41 +80,32 @@ export function ReaderScreen() {
   }, [article]);
 
   const handleOpenHighlightModal = useCallback(() => {
-    setSelection(null);
+    setPastedText('');
     setShowHighlightModal(true);
   }, []);
 
-  const handleSaveHighlight = useCallback(async () => {
-    if (!article || !selection || selection.start === selection.end) return;
-    const plainText = article.content_text
-      ?? (article.content_html ? htmlToPlainText(article.content_html) : '');
-    const selectedText = plainText.slice(selection.start, selection.end).trim();
-    if (!selectedText) return;
+  const handleCloseHighlightModal = useCallback(() => {
+    setShowHighlightModal(false);
+    setPastedText('');
+  }, []);
 
+  const handleSaveHighlight = useCallback(async () => {
+    if (!article || !matchInfo) return;
     setSaving(true);
     try {
       await addHighlight({
         article_id: article.id,
-        selected_text: selectedText,
-        start_offset: selection.start,
-        end_offset: selection.end,
+        selected_text: pastedText.trim(),
+        start_offset: matchInfo.start,
+        end_offset: matchInfo.end,
       });
-      setShowHighlightModal(false);
-      setSelection(null);
+      handleCloseHighlightModal();
     } catch {
       Alert.alert('Erro', 'Não foi possível salvar o destaque.');
     } finally {
       setSaving(false);
     }
-  }, [article, selection, addHighlight]);
-
-  const handleSelectionChange = useCallback(
-    (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
-      const { start, end } = e.nativeEvent.selection;
-      setSelection(start !== end ? { start, end } : null);
-    },
-    [],
-  );
+  }, [article, matchInfo, pastedText, addHighlight, handleCloseHighlightModal]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -167,6 +158,19 @@ export function ReaderScreen() {
     );
   }
 
+  const plainText = useMemo(
+    () => article?.content_text ?? (article?.content_html ? htmlToPlainText(article.content_html) : ''),
+    [article],
+  );
+
+  const matchInfo = useMemo(() => {
+    const q = pastedText.trim();
+    if (!q || !plainText) return null;
+    const idx = plainText.toLowerCase().indexOf(q.toLowerCase());
+    if (idx === -1) return null;
+    return { start: idx, end: idx + q.length };
+  }, [pastedText, plainText]);
+
   const isDark = prefs.backgroundColor === DARK_BG;
   const fontFamilyValue = FONT_FAMILIES[prefs.fontFamily]?.value;
 
@@ -204,9 +208,6 @@ export function ReaderScreen() {
     },
     code: { fontSize: prefs.fontSize - 2 },
   };
-
-  const plainText = article.content_text
-    ?? (article.content_html ? htmlToPlainText(article.content_html) : '');
 
   return (
     <View style={[styles.container, { backgroundColor: prefs.backgroundColor }]}>
@@ -269,69 +270,103 @@ export function ReaderScreen() {
         )}
       </ScrollView>
 
-      {/* Modal de seleção de destaque */}
+      {/* Modal de destaque */}
       <Modal
         visible={showHighlightModal}
         animationType="slide"
-        onRequestClose={() => setShowHighlightModal(false)}
+        onRequestClose={handleCloseHighlightModal}
       >
         <SafeAreaView style={highlightStyles.container}>
-          {/* Header */}
-          <View style={highlightStyles.header}>
-            <TouchableOpacity
-              onPress={() => setShowHighlightModal(false)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <IconX size={22} color={palette.gray500} strokeWidth={1.75} />
-            </TouchableOpacity>
-            <Text style={highlightStyles.headerTitle}>Marcar trecho</Text>
-            <View style={{ width: 22 }} />
-          </View>
-
-          <Text style={highlightStyles.hint}>
-            Segure e arraste para selecionar o trecho que deseja destacar.
-          </Text>
-
-          {plainText ? (
-            <ScrollView
-              style={highlightStyles.scroll}
-              contentContainerStyle={highlightStyles.scrollContent}
-            >
-              <TextInput
-                value={plainText}
-                editable={false}
-                multiline
-                scrollEnabled={false}
-                onSelectionChange={handleSelectionChange}
-                style={highlightStyles.articleText}
-                textAlignVertical="top"
-              />
-            </ScrollView>
-          ) : (
-            <View style={highlightStyles.noContent}>
-              <IconFileText size={40} color={palette.gray300} strokeWidth={1.25} />
-              <Text style={highlightStyles.noContentText}>
-                Este artigo não possui texto para destacar.
-              </Text>
-            </View>
-          )}
-
-          {/* Rodapé aparece ao selecionar */}
-          {selection && selection.start !== selection.end && (
-            <View style={highlightStyles.footer}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            {/* Header */}
+            <View style={highlightStyles.header}>
               <TouchableOpacity
-                style={[highlightStyles.saveBtn, { backgroundColor: accent }, saving && { opacity: 0.7 }]}
+                onPress={handleCloseHighlightModal}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <IconX size={22} color={palette.gray500} strokeWidth={1.75} />
+              </TouchableOpacity>
+              <Text style={highlightStyles.headerTitle}>Marcar trecho</Text>
+              <View style={{ width: 22 }} />
+            </View>
+
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={highlightStyles.body}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Instruções */}
+              <View style={highlightStyles.steps}>
+                <View style={highlightStyles.step}>
+                  <View style={[highlightStyles.stepBadge, { backgroundColor: accent }]}>
+                    <Text style={highlightStyles.stepNum}>1</Text>
+                  </View>
+                  <Text style={highlightStyles.stepText}>
+                    No artigo, pressione e segure o texto desejado até aparecer a seleção, arraste para selecionar e toque em{' '}
+                    <Text style={highlightStyles.stepBold}>Copiar</Text>.
+                  </Text>
+                </View>
+                <View style={highlightStyles.step}>
+                  <View style={[highlightStyles.stepBadge, { backgroundColor: accent }]}>
+                    <Text style={highlightStyles.stepNum}>2</Text>
+                  </View>
+                  <Text style={highlightStyles.stepText}>
+                    Cole o trecho no campo abaixo e salve.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Campo de entrada */}
+              <TextInput
+                style={highlightStyles.input}
+                value={pastedText}
+                onChangeText={setPastedText}
+                placeholder="Cole o trecho aqui…"
+                placeholderTextColor={palette.gray400}
+                multiline
+                textAlignVertical="top"
+                autoFocus={false}
+              />
+
+              {/* Feedback */}
+              {pastedText.trim().length > 0 && (
+                matchInfo ? (
+                  <View style={highlightStyles.validRow}>
+                    <IconCheck size={15} color="#22c55e" strokeWidth={2.5} />
+                    <Text style={highlightStyles.validText}>Trecho encontrado no artigo</Text>
+                  </View>
+                ) : (
+                  <Text style={highlightStyles.notFoundText}>
+                    Trecho não encontrado. Verifique se o texto foi copiado corretamente.
+                  </Text>
+                )
+              )}
+
+              {/* Botão salvar */}
+              <TouchableOpacity
+                style={[
+                  highlightStyles.saveBtn,
+                  { backgroundColor: accent },
+                  (!matchInfo || saving) && { opacity: 0.4 },
+                ]}
                 onPress={handleSaveHighlight}
-                disabled={saving}
+                disabled={!matchInfo || saving}
                 activeOpacity={0.8}
               >
-                <IconHighlight size={18} color="#fff" strokeWidth={2} />
-                <Text style={highlightStyles.saveBtnText}>
-                  {saving ? 'Salvando…' : 'Salvar destaque'}
-                </Text>
+                {saving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <IconHighlight size={18} color="#fff" strokeWidth={2} />
+                    <Text style={highlightStyles.saveBtnText}>Salvar destaque</Text>
+                  </>
+                )}
               </TouchableOpacity>
-            </View>
-          )}
+            </ScrollView>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
 
@@ -492,28 +527,34 @@ const highlightStyles = StyleSheet.create({
   headerTitle: {
     fontSize: 16, fontWeight: '600', color: palette.gray800,
   },
-  hint: {
-    fontSize: 13, color: palette.gray500,
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
-    backgroundColor: '#fde04720',
-    borderBottomWidth: 0.5, borderBottomColor: palette.gray200,
+  body: { padding: spacing.lg, paddingBottom: 40, gap: spacing.lg },
+  steps: { gap: spacing.md },
+  step: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
+  stepBadge: {
+    width: 22, height: 22, borderRadius: 11,
+    justifyContent: 'center', alignItems: 'center',
+    marginTop: 1,
   },
-  scroll: { flex: 1 },
-  scrollContent: { padding: spacing.xl, paddingBottom: 40 },
-  articleText: {
-    fontSize: 16, lineHeight: 26, color: palette.gray900,
+  stepNum: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  stepText: { flex: 1, fontSize: 14, color: palette.gray600, lineHeight: 20 },
+  stepBold: { fontWeight: '600', color: palette.gray800 },
+  input: {
+    borderWidth: 1.5, borderColor: palette.gray200,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    fontSize: 15, color: palette.gray900,
     fontFamily: 'serif',
+    minHeight: 120,
+    backgroundColor: palette.gray50,
+    textAlignVertical: 'top',
   },
-  noContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  noContentText: { fontSize: 15, color: palette.gray500, marginTop: spacing.md, textAlign: 'center' },
-  footer: {
-    padding: spacing.lg,
-    borderTopWidth: 0.5, borderTopColor: palette.gray200,
-    backgroundColor: palette.white,
-  },
+  validRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  validText: { fontSize: 13, color: '#22c55e', fontWeight: '500' },
+  notFoundText: { fontSize: 13, color: '#ef4444' },
   saveBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: spacing.md, borderRadius: radius.lg, gap: spacing.sm,
+    paddingVertical: 14, borderRadius: radius.lg, gap: spacing.sm,
+    marginTop: spacing.sm,
   },
   saveBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
 });
