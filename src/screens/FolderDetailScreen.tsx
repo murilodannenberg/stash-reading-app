@@ -5,7 +5,9 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  IconBooks, IconFileText, IconBookmark, IconBookmarkFilled, IconShare2, IconPlus,
+} from '@tabler/icons-react-native';
 import { useArticleStore } from '../stores/articleStore';
 import { useFolderStore } from '../stores/folderStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
@@ -83,7 +85,7 @@ export function FolderDetailScreen() {
       onLongPress={() => handleFolderActions(item)}
     >
       <View style={[styles.folderIconWrap, { backgroundColor: accent + '18' }]}>
-        <Ionicons name="library-outline" size={18} color={accent} />
+        <IconBooks size={18} color={accent} strokeWidth={1.5} />
       </View>
       <Text style={[styles.folderName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
     </TouchableOpacity>
@@ -104,7 +106,7 @@ export function FolderDetailScreen() {
         />
       ) : (
         <View style={[styles.articleThumbPlaceholder, { backgroundColor: colors.inputBg }]}>
-          <Ionicons name="document-text-outline" size={22} color={colors.textMuted} />
+          <IconFileText size={22} color={colors.textMuted} strokeWidth={1.5} />
         </View>
       )}
       <View style={styles.articleBody}>
@@ -124,11 +126,10 @@ export function FolderDetailScreen() {
           onPress={() => toggleFavorite(item.id)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons
-            name={item.is_favorite ? 'bookmark' : 'bookmark-outline'}
-            size={20}
-            color={item.is_favorite ? accent : colors.textMuted}
-          />
+          {item.is_favorite
+            ? <IconBookmarkFilled size={20} color={accent} />
+            : <IconBookmark size={20} color={colors.textMuted} strokeWidth={1.5} />
+          }
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => {
@@ -140,7 +141,7 @@ export function FolderDetailScreen() {
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={{ marginTop: spacing.sm }}
         >
-          <Ionicons name="share-outline" size={18} color={colors.textMuted} />
+          <IconShare2 size={18} color={colors.textMuted} strokeWidth={1.5} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -172,7 +173,7 @@ export function FolderDetailScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <Ionicons name="document-text-outline" size={40} color={colors.textMuted} />
+            <IconFileText size={40} color={colors.textMuted} strokeWidth={1} />
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>Nenhum artigo nesta estante</Text>
           </View>
         }
@@ -183,7 +184,7 @@ export function FolderDetailScreen() {
         activeOpacity={0.8}
         onPress={() => navigation.navigate('AddArticle', { folderId })}
       >
-        <Ionicons name="add" size={26} color="#fff" />
+        <IconPlus size={26} color="#fff" strokeWidth={2} />
       </TouchableOpacity>
     </View>
   );

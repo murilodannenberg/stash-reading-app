@@ -4,7 +4,10 @@ import {
   ActivityIndicator, TouchableOpacity, useWindowDimensions, Modal, Share,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  IconShare2, IconTextSize, IconAlertCircle,
+  IconFileText, IconMinus, IconPlus, IconLineHeight, IconCheck,
+} from '@tabler/icons-react-native';
 import RenderHtml from 'react-native-render-html';
 import { getArticleById, markAsRead } from '../database';
 import { Article, RootStackParamList } from '../types';
@@ -63,10 +66,10 @@ export function ReaderScreen() {
       headerRight: () => (
         <View style={headerStyles.row}>
           <TouchableOpacity onPress={handleShare} style={headerStyles.btn}>
-            <Ionicons name="share-outline" size={20} color={accent} />
+            <IconShare2 size={20} color={accent} strokeWidth={1.75} />
           </TouchableOpacity>
           <TouchableOpacity onPress={toggleSettings} style={headerStyles.btn}>
-            <Ionicons name="text-outline" size={20} color={accent} />
+            <IconTextSize size={20} color={accent} strokeWidth={1.75} />
           </TouchableOpacity>
         </View>
       ),
@@ -84,7 +87,7 @@ export function ReaderScreen() {
   if (!article) {
     return (
       <View style={styles.center}>
-        <Ionicons name="alert-circle-outline" size={40} color={palette.gray300} />
+        <IconAlertCircle size={40} color={palette.gray300} strokeWidth={1.25} />
         <Text style={styles.errorText}>Artigo não encontrado.</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={[styles.backLink, { color: palette.primary }]}>Voltar</Text>
@@ -176,10 +179,10 @@ export function ReaderScreen() {
           </Text>
         ) : (
           <View style={styles.emptyContent}>
-            <Ionicons
-              name="document-text-outline"
+            <IconFileText
               size={40}
               color={isDark ? 'rgba(255,255,255,0.25)' : palette.gray300}
+              strokeWidth={1.25}
             />
             <Text style={[styles.emptyText, { color: prefs.textColor, opacity: 0.5 }]}>
               Este artigo foi salvo sem conteúdo.
@@ -207,7 +210,7 @@ export function ReaderScreen() {
                   if (idx > 0) setFontSize(FONT_SIZES[idx - 1]);
                 }}
               >
-                <Ionicons name="remove" size={20} color={palette.gray500} />
+                <IconMinus size={20} color={palette.gray500} strokeWidth={1.75} />
               </TouchableOpacity>
               <Text style={settingsStyles.sizeValue}>{prefs.fontSize}px</Text>
               <TouchableOpacity
@@ -217,7 +220,7 @@ export function ReaderScreen() {
                   if (idx < FONT_SIZES.length - 1) setFontSize(FONT_SIZES[idx + 1]);
                 }}
               >
-                <Ionicons name="add" size={20} color={palette.gray500} />
+                <IconPlus size={20} color={palette.gray500} strokeWidth={1.75} />
               </TouchableOpacity>
             </View>
 
@@ -261,7 +264,7 @@ export function ReaderScreen() {
                     ]}
                     onPress={() => setLineHeight(lh)}
                   >
-                    <Ionicons name="reorder-three-outline" size={18} color={isActive ? accent : palette.gray400} />
+                    <IconLineHeight size={18} color={isActive ? accent : palette.gray400} strokeWidth={1.75} />
                     <Text style={[
                       settingsStyles.lhText,
                       isActive && { color: accent, fontWeight: '600' },
@@ -295,7 +298,7 @@ export function ReaderScreen() {
                       {t.label}
                     </Text>
                     {isActive && (
-                      <Ionicons name="checkmark" size={14} color={accent} style={{ marginLeft: 4 }} />
+                      <IconCheck size={14} color={accent} strokeWidth={2.5} style={{ marginLeft: 4 }} />
                     )}
                   </TouchableOpacity>
                 );

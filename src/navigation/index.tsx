@@ -2,7 +2,10 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  IconBooks, IconBookmark, IconBookmarkFilled,
+  IconArchive, IconArchiveFilled, IconSettings,
+} from '@tabler/icons-react-native';
 
 import { LibraryScreen } from '../screens/LibraryScreen';
 import { HighlightsScreen } from '../screens/HighlightsScreen';
@@ -19,11 +22,13 @@ import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const TAB_ICONS: Record<keyof MainTabParamList, { on: string; off: string }> = {
-  Library:    { on: 'library',    off: 'library-outline' },
-  Highlights: { on: 'bookmark',   off: 'bookmark-outline' },
-  Shelves:    { on: 'archive',    off: 'archive-outline' },
-  Settings:   { on: 'settings',   off: 'settings-outline' },
+type TablerIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+
+const TAB_ICONS: Record<keyof MainTabParamList, { active: TablerIcon; inactive: TablerIcon }> = {
+  Library:    { active: IconBooks,          inactive: IconBooks },
+  Highlights: { active: IconBookmarkFilled, inactive: IconBookmark },
+  Shelves:    { active: IconArchiveFilled,  inactive: IconArchive },
+  Settings:   { active: IconSettings,       inactive: IconSettings },
 };
 
 function MainTabs() {
@@ -36,13 +41,8 @@ function MainTabs() {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           const icons = TAB_ICONS[route.name];
-          return (
-            <Ionicons
-              name={(focused ? icons.on : icons.off) as keyof typeof Ionicons.glyphMap}
-              size={size}
-              color={color}
-            />
-          );
+          const Icon = focused ? icons.active : icons.inactive;
+          return <Icon size={size} color={color} strokeWidth={focused ? 2 : 1.5} />;
         },
         tabBarActiveTintColor: accent,
         tabBarInactiveTintColor: colors.textMuted,

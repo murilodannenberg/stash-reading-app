@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import { IconBooks, IconChevronRight, IconPlus } from '@tabler/icons-react-native';
 import { useFolderStore } from '../stores/folderStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { Folder, RootStackParamList } from '../types';
@@ -59,14 +59,14 @@ export function ShelvesScreen() {
       onLongPress={() => handleLongPress(item)}
     >
       <View style={[styles.iconWrap, { backgroundColor: accent + '18' }]}>
-        <Ionicons name="library-outline" size={22} color={accent} />
+        <IconBooks size={22} color={accent} strokeWidth={1.5} />
       </View>
       <View style={styles.cardBody}>
         <Text style={[styles.cardName, { color: colors.text }]} numberOfLines={1}>
           {item.name}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+      <IconChevronRight size={18} color={colors.textMuted} strokeWidth={1.5} />
     </TouchableOpacity>
   );
 
@@ -79,7 +79,7 @@ export function ShelvesScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <Ionicons name="library-outline" size={48} color={colors.border} />
+            <IconBooks size={48} color={colors.border} strokeWidth={1} />
             <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
               Nenhuma estante ainda
             </Text>
@@ -96,7 +96,7 @@ export function ShelvesScreen() {
         activeOpacity={0.85}
         onPress={() => setShowModal(true)}
       >
-        <Ionicons name="add" size={26} color="#fff" />
+        <IconPlus size={26} color="#fff" strokeWidth={2} />
       </TouchableOpacity>
 
       {/* Modal de nova estante */}

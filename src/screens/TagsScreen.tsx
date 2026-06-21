@@ -4,7 +4,7 @@ import {
   TextInput, Modal, Pressable, Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { IconTags, IconPlus, IconCheck } from '@tabler/icons-react-native';
 import { useTagStore } from '../stores/tagStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { Tag } from '../types';
@@ -67,7 +67,7 @@ export function TagsScreen() {
         columnWrapperStyle={styles.row}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <Ionicons name="pricetags-outline" size={48} color={colors.textMuted} />
+            <IconTags size={48} color={colors.textMuted} strokeWidth={1} />
             <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>Nenhuma tag</Text>
             <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Toque no + para criar</Text>
           </View>
@@ -79,7 +79,7 @@ export function TagsScreen() {
         activeOpacity={0.8}
         onPress={() => setShowModal(true)}
       >
-        <Ionicons name="add" size={26} color="#fff" />
+        <IconPlus size={26} color="#fff" strokeWidth={2} />
       </TouchableOpacity>
 
       <Modal visible={showModal} transparent animationType="fade">
@@ -103,7 +103,7 @@ export function TagsScreen() {
                   onPress={() => setSelectedColor(c)}
                 >
                   {selectedColor === c && (
-                    <Ionicons name="checkmark" size={16} color="#fff" />
+                    <IconCheck size={16} color="#fff" strokeWidth={2.5} />
                   )}
                 </TouchableOpacity>
               ))}

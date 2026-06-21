@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import { IconLink, IconEdit, IconCloudDownload } from '@tabler/icons-react-native';
 import { createArticle } from '../database';
 import { fetchAndParse } from '../services/articleParser';
 import { downloadCoverImage } from '../services/imageStorage';
@@ -109,10 +109,10 @@ export function AddArticleScreen() {
           onPress={() => setMode('url')}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name="link-outline"
+          <IconLink
             size={16}
             color={mode === 'url' ? accent : colors.textMuted}
+            strokeWidth={1.75}
             style={styles.toggleIcon}
           />
           <Text style={[styles.toggleText, { color: colors.textMuted }, mode === 'url' && { color: accent }]}>
@@ -124,10 +124,10 @@ export function AddArticleScreen() {
           onPress={() => setMode('manual')}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name="create-outline"
+          <IconEdit
             size={16}
             color={mode === 'manual' ? accent : colors.textMuted}
+            strokeWidth={1.75}
             style={styles.toggleIcon}
           />
           <Text style={[styles.toggleText, { color: colors.textMuted }, mode === 'manual' && { color: accent }]}>
@@ -151,7 +151,7 @@ export function AddArticleScreen() {
               autoFocus
             />
             <View style={styles.hintRow}>
-              <Ionicons name="cloud-download-outline" size={14} color={colors.textMuted} />
+              <IconCloudDownload size={14} color={colors.textMuted} strokeWidth={1.5} />
               <Text style={[styles.hintText, { color: colors.textMuted }]}>
                 O conteudo sera baixado e salvo localmente para leitura offline.
               </Text>

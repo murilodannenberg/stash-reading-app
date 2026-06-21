@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { IconCheck, IconShieldCheck, IconBrandGithub, IconHeart } from '@tabler/icons-react-native';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import {
   HOME_THEMES, HomeThemeKey,
@@ -58,7 +58,7 @@ export function SettingsScreen() {
                 <Text style={[styles.themeBtnLabel, { color: t.text }]}>{t.label}</Text>
                 {isActive && (
                   <View style={[styles.themeCheck, { backgroundColor: accent }]}>
-                    <Ionicons name="checkmark" size={10} color="#fff" />
+                    <IconCheck size={10} color="#fff" strokeWidth={2.5} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -73,21 +73,21 @@ export function SettingsScreen() {
       </Text>
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.aboutRow}>
-          <Ionicons name="shield-checkmark-outline" size={18} color={colors.textMuted} />
+          <IconShieldCheck size={18} color={colors.textMuted} strokeWidth={1.5} />
           <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
             100% offline, sem rastreamento
           </Text>
         </View>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.aboutRow}>
-          <Ionicons name="logo-github" size={18} color={colors.textMuted} />
+          <IconBrandGithub size={18} color={colors.textMuted} strokeWidth={1.5} />
           <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
             Open source — stash-reading-app
           </Text>
         </View>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.aboutRow}>
-          <Ionicons name="heart-outline" size={18} color={Colors.ambar} />
+          <IconHeart size={18} color={Colors.ambar} strokeWidth={1.5} />
           <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
             Feito com carinho, sem anúncios
           </Text>

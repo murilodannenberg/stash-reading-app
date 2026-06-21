@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import { IconFileText, IconChevronRight, IconSearch, IconCircleX } from '@tabler/icons-react-native';
 import { useArticleStore } from '../stores/articleStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { Article, RootStackParamList } from '../types';
@@ -50,7 +50,7 @@ export function SearchScreen() {
         />
       ) : (
         <View style={[styles.itemThumbPlaceholder, { backgroundColor: colors.inputBg }]}>
-          <Ionicons name="document-text-outline" size={20} color={colors.textMuted} />
+          <IconFileText size={20} color={colors.textMuted} strokeWidth={1.5} />
         </View>
       )}
       <View style={styles.itemBody}>
@@ -60,7 +60,7 @@ export function SearchScreen() {
           <Text style={[styles.meta, { color: colors.textMuted }]}>{item.reading_time_min} min de leitura</Text>
         )}
       </View>
-      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+      <IconChevronRight size={16} color={colors.textMuted} strokeWidth={1.5} />
     </TouchableOpacity>
   );
 
@@ -68,7 +68,7 @@ export function SearchScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.searchRow, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <View style={[styles.inputWrap, { backgroundColor: colors.inputBg }]}>
-          <Ionicons name="search" size={18} color={colors.textMuted} style={styles.inputIcon} />
+          <IconSearch size={18} color={colors.textMuted} strokeWidth={1.5} style={styles.inputIcon} />
           <TextInput
             style={[styles.input, { color: colors.text }]}
             placeholder="Buscar artigos..."
@@ -80,7 +80,7 @@ export function SearchScreen() {
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => { setQuery(''); setResults([]); setSearched(false); }}>
-              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+              <IconCircleX size={18} color={colors.textMuted} strokeWidth={1.5} />
             </TouchableOpacity>
           )}
         </View>
@@ -100,12 +100,12 @@ export function SearchScreen() {
           ListEmptyComponent={
             searched ? (
               <View style={styles.emptyWrap}>
-                <Ionicons name="search-outline" size={40} color={colors.textMuted} />
+                <IconSearch size={40} color={colors.textMuted} strokeWidth={1} />
                 <Text style={[styles.empty, { color: colors.textMuted }]}>Nenhum resultado para "{query}"</Text>
               </View>
             ) : (
               <View style={styles.emptyWrap}>
-                <Ionicons name="search-outline" size={48} color={colors.border} />
+                <IconSearch size={48} color={colors.border} strokeWidth={1} />
                 <Text style={[styles.emptyHint, { color: colors.textMuted }]}>Busca por titulo, autor ou conteudo</Text>
               </View>
             )

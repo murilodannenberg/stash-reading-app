@@ -5,7 +5,12 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  IconSearch, IconPlus, IconFileText,
+  IconBookmark, IconBookmarkFilled, IconShare2,
+  IconAdjustments, IconX, IconCircleX,
+  IconStack2, IconEyeOff, IconCircleCheck,
+} from '@tabler/icons-react-native';
 import { useArticleStore } from '../stores/articleStore';
 import { useTagStore } from '../stores/tagStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
@@ -14,12 +19,13 @@ import { spacing, radius, typography } from '../theme/colors';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type StatusFilter = 'all' | 'unread' | 'read' | 'favorites';
+type TablerIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 
-const FILTERS: { key: StatusFilter; label: string; icon: string }[] = [
-  { key: 'all', label: 'Todos', icon: 'layers-outline' },
-  { key: 'unread', label: 'Nao lidos', icon: 'eye-off-outline' },
-  { key: 'read', label: 'Lidos', icon: 'checkmark-circle-outline' },
-  { key: 'favorites', label: 'Favoritos', icon: 'bookmark-outline' },
+const FILTERS: { key: StatusFilter; label: string; Icon: TablerIcon }[] = [
+  { key: 'all', label: 'Todos', Icon: IconStack2 },
+  { key: 'unread', label: 'Nao lidos', Icon: IconEyeOff },
+  { key: 'read', label: 'Lidos', Icon: IconCircleCheck },
+  { key: 'favorites', label: 'Favoritos', Icon: IconBookmark },
 ];
 
 export function LibraryScreen() {
@@ -46,13 +52,13 @@ export function LibraryScreen() {
             onPress={() => navigation.navigate('Search')}
             style={{ paddingHorizontal: 10, paddingVertical: 6 }}
           >
-            <Ionicons name="search-outline" size={22} color={accent} />
+            <IconSearch size={22} color={accent} strokeWidth={1.75} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation.navigate('AddArticle', {})}
             style={{ paddingHorizontal: 10, paddingVertical: 6 }}
           >
-            <Ionicons name="add" size={26} color={accent} />
+            <IconPlus size={26} color={accent} strokeWidth={2} />
           </TouchableOpacity>
         </View>
       ),
@@ -163,7 +169,7 @@ export function LibraryScreen() {
         />
       ) : (
         <View style={[styles.articleThumbPlaceholder, { backgroundColor: colors.inputBg }]}>
-          <Ionicons name="document-text-outline" size={22} color={colors.textMuted} />
+          <IconFileText size={22} color={colors.textMuted} strokeWidth={1.5} />
         </View>
       )}
       <View style={styles.articleBody}>
@@ -194,18 +200,17 @@ export function LibraryScreen() {
           onPress={() => toggleFavorite(item.id)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons
-            name={item.is_favorite ? 'bookmark' : 'bookmark-outline'}
-            size={20}
-            color={item.is_favorite ? accent : colors.textMuted}
-          />
+          {item.is_favorite
+            ? <IconBookmarkFilled size={20} color={accent} />
+            : <IconBookmark size={20} color={colors.textMuted} strokeWidth={1.5} />
+          }
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => handleShareArticle(item)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={{ marginTop: spacing.sm }}
         >
-          <Ionicons name="share-outline" size={18} color={colors.textMuted} />
+          <IconShare2 size={18} color={colors.textMuted} strokeWidth={1.5} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -220,10 +225,10 @@ export function LibraryScreen() {
           onPress={() => setShowFilterSheet(true)}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name="options-outline"
+          <IconAdjustments
             size={18}
             color={hasActiveFilters ? '#fff' : colors.textMuted}
+            strokeWidth={1.75}
           />
           {activeFilterCount > 0 && (
             <View style={[styles.filterBadge, { backgroundColor: hasActiveFilters ? '#fff' : accent }]}>
@@ -266,7 +271,7 @@ export function LibraryScreen() {
               <Text style={[styles.activeChipText, { color: colors.text }]} numberOfLines={1}>
                 {item.label}
               </Text>
-              <Ionicons name="close" size={14} color={colors.textMuted} />
+              <IconX size={14} color={colors.textMuted} strokeWidth={2} />
             </TouchableOpacity>
           )}
           ListEmptyComponent={
@@ -302,7 +307,7 @@ export function LibraryScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
+            <IconFileText size={48} color={colors.textMuted} strokeWidth={1} />
             <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
               {statusFilter !== 'all' || selectedTag || searchQuery
                 ? 'Nenhum artigo encontrado'
@@ -336,7 +341,7 @@ export function LibraryScreen() {
             {/* Search */}
             <Text style={[styles.sheetLabel, { color: colors.textSecondary }]}>Busca</Text>
             <View style={[styles.sheetSearchWrap, { backgroundColor: colors.inputBg }]}>
-              <Ionicons name="search" size={16} color={colors.textMuted} style={{ marginRight: spacing.sm }} />
+              <IconSearch size={16} color={colors.textMuted} strokeWidth={1.5} style={{ marginRight: spacing.sm }} />
               <TextInput
                 style={[styles.sheetSearchInput, { color: colors.text }]}
                 placeholder="Buscar por titulo ou autor..."
@@ -347,7 +352,7 @@ export function LibraryScreen() {
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+                  <IconCircleX size={16} color={colors.textMuted} strokeWidth={1.5} />
                 </TouchableOpacity>
               )}
             </View>
@@ -357,6 +362,7 @@ export function LibraryScreen() {
             <View style={styles.sheetChipRow}>
               {FILTERS.map((f) => {
                 const isActive = statusFilter === f.key;
+                const FilterIcon = f.Icon;
                 return (
                   <TouchableOpacity
                     key={f.key}
@@ -368,11 +374,7 @@ export function LibraryScreen() {
                     onPress={() => setStatusFilter(f.key)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons
-                      name={f.icon as keyof typeof Ionicons.glyphMap}
-                      size={16}
-                      color={isActive ? accent : colors.textMuted}
-                    />
+                    <FilterIcon size={16} color={isActive ? accent : colors.textMuted} strokeWidth={1.5} />
                     <Text style={[
                       styles.sheetChipText,
                       { color: colors.textSecondary },
