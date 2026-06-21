@@ -4,17 +4,19 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   IconBooks, IconBookmark, IconBookmarkFilled,
-  IconArchive, IconArchiveFilled, IconSettings,
+  IconArchive, IconArchiveFilled, IconSettings, IconTags,
 } from '@tabler/icons-react-native';
 
 import { LibraryScreen } from '../screens/LibraryScreen';
 import { HighlightsScreen } from '../screens/HighlightsScreen';
 import { ShelvesScreen } from '../screens/ShelvesScreen';
+import { TagsScreen } from '../screens/TagsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { ReaderScreen } from '../screens/ReaderScreen';
 import { FolderDetailScreen } from '../screens/FolderDetailScreen';
 import { AddArticleScreen } from '../screens/AddArticleScreen';
+import { TrashScreen } from '../screens/TrashScreen';
 
 import { RootStackParamList, MainTabParamList } from '../types';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
@@ -28,6 +30,7 @@ const TAB_ICONS: Record<keyof MainTabParamList, { active: TablerIcon; inactive: 
   Library:    { active: IconBooks,          inactive: IconBooks },
   Highlights: { active: IconBookmarkFilled, inactive: IconBookmark },
   Shelves:    { active: IconArchiveFilled,  inactive: IconArchive },
+  Tags:       { active: IconTags,           inactive: IconTags },
   Settings:   { active: IconSettings,       inactive: IconSettings },
 };
 
@@ -80,6 +83,11 @@ function MainTabs() {
         options={{ title: 'Estantes', tabBarLabel: 'Estantes' }}
       />
       <Tab.Screen
+        name="Tags"
+        component={TagsScreen}
+        options={{ title: 'Tags', tabBarLabel: 'Tags' }}
+      />
+      <Tab.Screen
         name="Settings"
         component={SettingsScreen}
         options={{ title: 'Ajustes', tabBarLabel: 'Ajustes' }}
@@ -130,6 +138,11 @@ export function AppNavigator() {
           name="Search"
           component={SearchScreen}
           options={{ title: 'Buscar' }}
+        />
+        <Stack.Screen
+          name="Trash"
+          component={TrashScreen}
+          options={{ title: 'Lixeira' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

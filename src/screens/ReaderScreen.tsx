@@ -97,7 +97,7 @@ export function ReaderScreen() {
   }
 
   const isDark = prefs.backgroundColor === DARK_BG;
-  const fontFamilyValue = prefs.fontFamily === 'System' ? undefined : prefs.fontFamily;
+  const fontFamilyValue = FONT_FAMILIES[prefs.fontFamily]?.value;
 
   // Determina o linkColor do tema ativo
   const activeLinkColor = Object.values(READING_THEMES).find(
@@ -228,6 +228,7 @@ export function ReaderScreen() {
             <Text style={settingsStyles.heading}>Fonte</Text>
             <View style={settingsStyles.row}>
               {(Object.keys(FONT_FAMILIES) as FontFamilyKey[]).map((key) => {
+                const { label, value } = FONT_FAMILIES[key];
                 const isActive = prefs.fontFamily === key;
                 return (
                   <TouchableOpacity
@@ -240,10 +241,10 @@ export function ReaderScreen() {
                   >
                     <Text style={[
                       settingsStyles.fontBtnText,
-                      { fontFamily: key === 'System' ? undefined : key },
+                      { fontFamily: value },
                       isActive && { color: accent, fontWeight: '600' },
                     ]}>
-                      {key}
+                      {label}
                     </Text>
                   </TouchableOpacity>
                 );

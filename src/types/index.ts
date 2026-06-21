@@ -24,9 +24,11 @@ export interface Article {
   reading_time_min: number | null;
   is_read: boolean;
   is_favorite: boolean;
+  is_archived: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  permanently_deleted_at: string | null;
 }
 
 // ─── Files ─────────────────────────────────────────────────────────────────
@@ -96,11 +98,13 @@ export type RootStackParamList = {
   TagDetail: { tagId: string; tagName: string };
   AddArticle: { folderId?: string };
   Search: undefined;
+  Trash: undefined;
 };
 
 export type MainTabParamList = {
   Library: undefined;
   Highlights: undefined;
   Shelves: undefined;
+  Tags: undefined;
   Settings: undefined;
 };
