@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { IconBookmark } from '@tabler/icons-react-native';
+import { IconHighlight } from '@tabler/icons-react-native';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { spacing, typography } from '../theme/colors';
 
@@ -11,7 +11,7 @@ export function HighlightsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.empty}>
-        <IconBookmark size={52} color={colors.border} strokeWidth={1.5} />
+        <IconHighlight size={52} color={colors.border} strokeWidth={1.5} />
         <Text style={[styles.title, { color: colors.textSecondary }]}>Destaques</Text>
         <Text style={[styles.subtitle, { color: colors.textMuted }]}>
           Marque trechos enquanto lê.{'\n'}Eles aparecerão aqui.

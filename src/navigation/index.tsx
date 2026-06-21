@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   IconBooks, IconBookmark, IconBookmarkFilled,
-  IconArchive, IconArchiveFilled, IconSettings, IconTags,
+  IconArchive, IconArchiveFilled, IconSettings, IconTags, IconHighlight,
 } from '@tabler/icons-react-native';
 
 import { LibraryScreen } from '../screens/LibraryScreen';
@@ -28,7 +28,7 @@ type TablerIcon = React.ComponentType<{ size?: number; color?: string; strokeWid
 
 const TAB_ICONS: Record<keyof MainTabParamList, { active: TablerIcon; inactive: TablerIcon }> = {
   Library:    { active: IconBooks,          inactive: IconBooks },
-  Highlights: { active: IconBookmarkFilled, inactive: IconBookmark },
+  Highlights: { active: IconHighlight,      inactive: IconHighlight },
   Shelves:    { active: IconArchiveFilled,  inactive: IconArchive },
   Tags:       { active: IconTags,           inactive: IconTags },
   Settings:   { active: IconSettings,       inactive: IconSettings },
