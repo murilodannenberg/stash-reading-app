@@ -100,6 +100,7 @@ export type RootStackParamList = {
   Search: undefined;
   Trash: undefined;
   Highlights: undefined;
+  Backup: undefined;
 };
 
 export type MainTabParamList = {

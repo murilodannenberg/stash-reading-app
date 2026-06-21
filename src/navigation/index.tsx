@@ -18,6 +18,7 @@ import { FolderDetailScreen } from '../screens/FolderDetailScreen';
 import { AddArticleScreen } from '../screens/AddArticleScreen';
 import { TrashScreen } from '../screens/TrashScreen';
 import { HighlightsScreen } from '../screens/HighlightsScreen';
+import { BackupScreen } from '../screens/BackupScreen';
 
 import { RootStackParamList, MainTabParamList } from '../types';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
@@ -171,6 +172,11 @@ export function AppNavigator() {
           name="Highlights"
           component={HighlightsScreen}
           options={{ title: 'Destaques' }}
+        />
+        <Stack.Screen
+          name="Backup"
+          component={BackupScreen}
+          options={{ title: 'Backup e restauração' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

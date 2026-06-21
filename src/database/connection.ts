@@ -16,3 +16,10 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
   await db.execAsync('PRAGMA foreign_keys = ON;');
   return db;
 }
+
+export async function closeDatabase(): Promise<void> {
+  if (db) {
+    await db.closeAsync();
+    db = null;
+  }
+}

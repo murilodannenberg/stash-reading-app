@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { IconCheck, IconShieldCheck, IconBrandGithub, IconHeart, IconHighlight, IconChevronRight } from '@tabler/icons-react-native';
+import { IconCheck, IconShieldCheck, IconBrandGithub, IconHeart, IconHighlight, IconChevronRight, IconDatabaseExport } from '@tabler/icons-react-native';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import {
   HOME_THEMES, HomeThemeKey,
@@ -31,7 +31,7 @@ export function SettingsScreen() {
           <Text style={[styles.logoText, { color: accent }]}>S</Text>
         </View>
         <Text style={[styles.appName, { color: colors.text }]}>Stash</Text>
-        <Text style={[styles.appVersion, { color: colors.textMuted }]}>v0.4.0</Text>
+        <Text style={[styles.appVersion, { color: colors.textMuted }]}>v1.0.0</Text>
       </View>
 
       {/* Tema da interface */}
@@ -86,6 +86,24 @@ export function SettingsScreen() {
           <IconHighlight size={18} color={colors.textMuted} strokeWidth={1.5} />
           <Text style={[styles.menuText, { color: colors.textSecondary }]}>
             Meus destaques
+          </Text>
+          <IconChevronRight size={16} color={colors.textMuted} strokeWidth={1.5} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Backup */}
+      <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+        Dados
+      </Text>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <TouchableOpacity
+          style={styles.menuRow}
+          onPress={() => navigation.navigate('Backup')}
+          activeOpacity={0.7}
+        >
+          <IconDatabaseExport size={18} color={colors.textMuted} strokeWidth={1.5} />
+          <Text style={[styles.menuText, { color: colors.textSecondary }]}>
+            Backup e restauração
           </Text>
           <IconChevronRight size={16} color={colors.textMuted} strokeWidth={1.5} />
         </TouchableOpacity>

@@ -174,13 +174,14 @@ export function ReaderScreen() {
     (t) => t.backgroundColor === prefs.backgroundColor
   )?.linkColor ?? palette.primary;
 
+  const baseStyle = {
+    color: prefs.textColor,
+    fontSize: prefs.fontSize,
+    lineHeight: prefs.fontSize * prefs.lineHeight,
+    fontFamily: fontFamilyValue,
+  };
+
   const tagsStyles = {
-    body: {
-      color: prefs.textColor,
-      fontSize: prefs.fontSize,
-      lineHeight: prefs.fontSize * prefs.lineHeight,
-      fontFamily: fontFamilyValue,
-    },
     a: { color: activeLinkColor },
     img: { marginVertical: 12 },
     p: { marginBottom: 12 },
@@ -213,7 +214,7 @@ export function ReaderScreen() {
         <Text style={[styles.title, {
           color: prefs.textColor,
           fontSize: prefs.fontSize * 1.5,
-          fontFamily: 'Georgia',
+          fontFamily: fontFamilyValue ?? 'Georgia',
         }]}>
           {article.title}
         </Text>
@@ -237,7 +238,9 @@ export function ReaderScreen() {
           <RenderHtml
             contentWidth={width - 40}
             source={{ html: article.content_html }}
+            baseStyle={baseStyle}
             tagsStyles={tagsStyles}
+            systemFonts={fontFamilyValue ? [fontFamilyValue] : []}
             enableExperimentalMarginCollapsing
           />
         ) : article.content_text ? (
