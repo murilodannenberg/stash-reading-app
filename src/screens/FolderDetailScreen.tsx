@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet,
   TouchableOpacity, Alert, Share, Image,
@@ -6,13 +6,16 @@ import {
 import { useRoute, useNavigation, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
-  IconBooks, IconFileText, IconBookmark, IconBookmarkFilled, IconShare2, IconPlus,
+  IconBooks, IconFileText, IconBookmark, IconBookmarkFilled,
+  IconShare2, IconPlus, IconTrash, IconArchive, IconArchiveOff, IconTag,
 } from '@tabler/icons-react-native';
 import { useArticleStore } from '../stores/articleStore';
 import { useFolderStore } from '../stores/folderStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { Article, Folder, RootStackParamList } from '../types';
 import { spacing, radius, typography } from '../theme/colors';
+import { ActionSheet } from '../components/ActionSheet';
+import { TagPicker } from '../components/TagPicker';
 
 type Route = RouteProp<RootStackParamList, 'FolderDetail'>;
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -21,11 +24,15 @@ export function FolderDetailScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation<Nav>();
   const { folderId } = route.params;
-  const { articles, loadArticles, deleteArticle, toggleFavorite } = useArticleStore();
+  const { articles, loadArticles, trashArticle, archiveArticle, unarchiveArticle, toggleFavorite } = useArticleStore();
   const { folders, loadFolders, deleteFolder } = useFolderStore();
   const { prefs: appTheme } = useAppThemeStore();
   const colors = getHomeColors(appTheme.homeTheme);
   const accent = appTheme.accentColor;
+
+  const [sheetArticle, setSheetArticle] = useState<Article | null>(null);
+  const [sheetFolder, setSheetFolder] = useState<Folder | null>(null);
+  const [tagPickerArticleId, setTagPickerArticleId] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -34,55 +41,12 @@ export function FolderDetailScreen() {
     }, [folderId, loadArticles, loadFolders])
   );
 
-  const handleArticleActions = (article: Article) => {
-    Alert.alert(article.title, undefined, [
-      {
-        text: 'Compartilhar',
-        onPress: () => {
-          Share.share({
-            message: article.url
-              ? `${article.title}\n${article.url}`
-              : article.title,
-            title: article.title,
-          });
-        },
-      },
-      {
-        text: 'Excluir',
-        style: 'destructive',
-        onPress: () => {
-          Alert.alert('Remover artigo', `Remover "${article.title}"?`, [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Remover', style: 'destructive', onPress: () => deleteArticle(article.id) },
-          ]);
-        },
-      },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
-  };
-
-  const handleFolderActions = (folder: Folder) => {
-    Alert.alert(folder.name, undefined, [
-      {
-        text: 'Excluir estante',
-        style: 'destructive',
-        onPress: () => {
-          Alert.alert('Remover estante', `Remover "${folder.name}" e todo seu conteudo?`, [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Remover', style: 'destructive', onPress: () => deleteFolder(folder.id) },
-          ]);
-        },
-      },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
-  };
-
   const renderSubfolder = ({ item }: { item: Folder }) => (
     <TouchableOpacity
       style={[styles.folderCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
       activeOpacity={0.7}
       onPress={() => navigation.navigate('FolderDetail', { folderId: item.id, folderName: item.name })}
-      onLongPress={() => handleFolderActions(item)}
+      onLongPress={() => setSheetFolder(item)}
     >
       <View style={[styles.folderIconWrap, { backgroundColor: accent + '18' }]}>
         <IconBooks size={18} color={accent} strokeWidth={1.5} />
@@ -96,7 +60,7 @@ export function FolderDetailScreen() {
       style={[styles.articleCard, { backgroundColor: colors.background }]}
       activeOpacity={0.7}
       onPress={() => navigation.navigate('Reader', { articleId: item.id })}
-      onLongPress={() => handleArticleActions(item)}
+      onLongPress={() => setSheetArticle(item)}
     >
       {item.cover_image_path != null ? (
         <Image
@@ -116,9 +80,13 @@ export function FolderDetailScreen() {
         >
           {item.title}
         </Text>
-        {item.author != null && <Text style={[styles.articleMeta, { color: colors.textMuted }]}>{item.author}</Text>}
-        {item.reading_time_min != null && (
-          <Text style={[styles.articleMeta, { color: colors.textMuted }]}>{item.reading_time_min} min</Text>
+        {(item.author != null || item.reading_time_min != null) && (
+          <Text style={[styles.articleMeta, { color: colors.textMuted }]} numberOfLines={1}>
+            {[
+              item.author,
+              item.reading_time_min != null ? `${item.reading_time_min} min` : null,
+            ].filter(Boolean).join(' · ')}
+          </Text>
         )}
       </View>
       <View style={styles.articleActions}>
@@ -186,6 +154,65 @@ export function FolderDetailScreen() {
       >
         <IconPlus size={26} color="#fff" strokeWidth={2} />
       </TouchableOpacity>
+
+      <ActionSheet
+        visible={sheetArticle != null}
+        onClose={() => setSheetArticle(null)}
+        title={sheetArticle?.title}
+        actions={sheetArticle ? [
+          {
+            label: 'Compartilhar',
+            Icon: IconShare2,
+            onPress: () => Share.share({
+              message: sheetArticle.url
+                ? `${sheetArticle.title}\n${sheetArticle.url}`
+                : sheetArticle.title,
+              title: sheetArticle.title,
+            }),
+          },
+          {
+            label: 'Gerenciar tags',
+            Icon: IconTag,
+            onPress: () => setTagPickerArticleId(sheetArticle.id),
+          },
+          {
+            label: sheetArticle.is_archived ? 'Remover do arquivo' : 'Arquivar',
+            Icon: sheetArticle.is_archived ? IconArchiveOff : IconArchive,
+            onPress: () => sheetArticle.is_archived
+              ? unarchiveArticle(sheetArticle.id)
+              : archiveArticle(sheetArticle.id),
+          },
+          {
+            label: 'Mover para lixeira',
+            style: 'destructive',
+            Icon: IconTrash,
+            onPress: () => trashArticle(sheetArticle.id),
+          },
+        ] : []}
+      />
+
+      <ActionSheet
+        visible={sheetFolder != null}
+        onClose={() => setSheetFolder(null)}
+        title={sheetFolder?.name}
+        actions={sheetFolder ? [
+          {
+            label: 'Excluir estante',
+            style: 'destructive',
+            Icon: IconTrash,
+            onPress: () => Alert.alert('Remover estante', `Remover "${sheetFolder.name}" e todo seu conteudo?`, [
+              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Remover', style: 'destructive', onPress: () => deleteFolder(sheetFolder.id) },
+            ]),
+          },
+        ] : []}
+      />
+
+      <TagPicker
+        visible={tagPickerArticleId != null}
+        onClose={() => setTagPickerArticleId(null)}
+        articleId={tagPickerArticleId ?? ''}
+      />
     </View>
   );
 }

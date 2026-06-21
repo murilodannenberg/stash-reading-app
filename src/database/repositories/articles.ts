@@ -13,6 +13,7 @@ function rowToArticle(row: Record<string, unknown>): Article {
     ...(row as unknown as Article),
     is_read: Boolean(row['is_read']),
     is_favorite: Boolean(row['is_favorite']),
+    is_archived: Boolean(row['is_archived']),
   };
 }
 
@@ -22,22 +23,45 @@ export async function getArticles(folderId?: string | null): Promise<Article[]> 
   if (folderId !== undefined) {
     rows = await db.getAllAsync(
       `SELECT * FROM articles
-       WHERE deleted_at IS NULL AND folder_id IS ?
+       WHERE deleted_at IS NULL AND permanently_deleted_at IS NULL
+         AND is_archived = 0 AND folder_id IS ?
        ORDER BY updated_at DESC`,
       [folderId]
     );
   } else {
     rows = await db.getAllAsync(
-      'SELECT * FROM articles WHERE deleted_at IS NULL ORDER BY updated_at DESC'
+      `SELECT * FROM articles
+       WHERE deleted_at IS NULL AND permanently_deleted_at IS NULL AND is_archived = 0
+       ORDER BY updated_at DESC`
     );
   }
+  return rows.map(rowToArticle);
+}
+
+export async function getArchivedArticles(): Promise<Article[]> {
+  const db = getDatabase();
+  const rows = await db.getAllAsync<Record<string, unknown>>(
+    `SELECT * FROM articles
+     WHERE is_archived = 1 AND deleted_at IS NULL AND permanently_deleted_at IS NULL
+     ORDER BY updated_at DESC`
+  );
+  return rows.map(rowToArticle);
+}
+
+export async function getTrashArticles(): Promise<Article[]> {
+  const db = getDatabase();
+  const rows = await db.getAllAsync<Record<string, unknown>>(
+    `SELECT * FROM articles
+     WHERE deleted_at IS NOT NULL AND permanently_deleted_at IS NULL
+     ORDER BY deleted_at DESC`
+  );
   return rows.map(rowToArticle);
 }
 
 export async function getArticleById(id: string): Promise<Article | null> {
   const db = getDatabase();
   const row = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM articles WHERE id = ? AND deleted_at IS NULL',
+    'SELECT * FROM articles WHERE id = ? AND permanently_deleted_at IS NULL',
     [id]
   );
   return row ? rowToArticle(row) : null;
@@ -46,7 +70,9 @@ export async function getArticleById(id: string): Promise<Article | null> {
 export async function getFavoriteArticles(): Promise<Article[]> {
   const db = getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM articles WHERE is_favorite = 1 AND deleted_at IS NULL ORDER BY updated_at DESC'
+    `SELECT * FROM articles
+     WHERE is_favorite = 1 AND deleted_at IS NULL AND permanently_deleted_at IS NULL
+     ORDER BY updated_at DESC`
   );
   return rows.map(rowToArticle);
 }
@@ -73,9 +99,11 @@ export async function createArticle(input: CreateArticleInput): Promise<Article>
     folder_id: input.folder_id ?? null,
     is_read: false,
     is_favorite: false,
+    is_archived: false,
     created_at: now,
     updated_at: now,
     deleted_at: null,
+    permanently_deleted_at: null,
   };
 }
 
@@ -89,6 +117,22 @@ export async function toggleFavorite(id: string, isFavorite: boolean): Promise<v
   await db.runAsync('UPDATE articles SET is_favorite = ? WHERE id = ?', [isFavorite ? 1 : 0, id]);
 }
 
+export async function archiveArticle(id: string): Promise<void> {
+  const db = getDatabase();
+  await db.runAsync(
+    'UPDATE articles SET is_archived = 1, updated_at = ? WHERE id = ?',
+    [nowISO(), id]
+  );
+}
+
+export async function unarchiveArticle(id: string): Promise<void> {
+  const db = getDatabase();
+  await db.runAsync(
+    'UPDATE articles SET is_archived = 0, updated_at = ? WHERE id = ?',
+    [nowISO(), id]
+  );
+}
+
 export async function deleteArticle(id: string): Promise<void> {
   const db = getDatabase();
   const now = nowISO();
@@ -98,12 +142,38 @@ export async function deleteArticle(id: string): Promise<void> {
   );
 }
 
+export async function restoreArticle(id: string): Promise<void> {
+  const db = getDatabase();
+  await db.runAsync(
+    'UPDATE articles SET deleted_at = NULL, updated_at = ? WHERE id = ?',
+    [nowISO(), id]
+  );
+}
+
+export async function permanentlyDeleteArticle(id: string): Promise<void> {
+  const db = getDatabase();
+  await db.runAsync(
+    'UPDATE articles SET permanently_deleted_at = ?, updated_at = ? WHERE id = ?',
+    [nowISO(), nowISO(), id]
+  );
+}
+
+export async function emptyTrash(): Promise<void> {
+  const db = getDatabase();
+  await db.runAsync(
+    `UPDATE articles SET permanently_deleted_at = ?, updated_at = ?
+     WHERE deleted_at IS NOT NULL AND permanently_deleted_at IS NULL`,
+    [nowISO(), nowISO()]
+  );
+}
+
 export async function searchArticles(query: string): Promise<Article[]> {
   const db = getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
     `SELECT a.* FROM articles a
      JOIN articles_fts fts ON a.rowid = fts.rowid
      WHERE articles_fts MATCH ? AND a.deleted_at IS NULL
+       AND a.permanently_deleted_at IS NULL AND a.is_archived = 0
      ORDER BY rank`,
     [query]
   );
@@ -126,6 +196,7 @@ export async function getArticlesByTag(tagId: string): Promise<Article[]> {
     `SELECT a.* FROM articles a
      JOIN article_tags at ON at.article_id = a.id
      WHERE at.tag_id = ? AND a.deleted_at IS NULL
+       AND a.permanently_deleted_at IS NULL AND a.is_archived = 0
      ORDER BY a.updated_at DESC`,
     [tagId]
   );

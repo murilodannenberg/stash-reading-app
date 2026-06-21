@@ -5,18 +5,30 @@ import * as db from '../database';
 interface ArticleState {
   articles: Article[];
   loading: boolean;
-  // Actions
+  // Load
   loadArticles: (folderId?: string | null) => Promise<void>;
   loadFavorites: () => Promise<void>;
-  deleteArticle: (id: string) => Promise<void>;
+  loadArchivedArticles: () => Promise<void>;
+  loadArticlesByTag: (tagId: string) => Promise<void>;
+  // Article lifecycle
+  trashArticle: (id: string) => Promise<void>;
+  restoreArticle: (id: string) => Promise<void>;
+  permanentlyDeleteArticle: (id: string) => Promise<void>;
+  emptyTrash: () => Promise<void>;
+  archiveArticle: (id: string) => Promise<void>;
+  unarchiveArticle: (id: string) => Promise<void>;
+  // Other mutations
   markAsRead: (id: string, isRead: boolean) => Promise<void>;
   toggleFavorite: (id: string) => Promise<void>;
   searchArticles: (query: string) => Promise<Article[]>;
-  loadArticlesByTag: (tagId: string) => Promise<void>;
+  // Trash list (separate from main articles list)
+  trashArticles: Article[];
+  loadTrash: () => Promise<void>;
 }
 
 export const useArticleStore = create<ArticleState>((set, get) => ({
   articles: [],
+  trashArticles: [],
   loading: false,
 
   loadArticles: async (folderId) => {
@@ -39,8 +51,52 @@ export const useArticleStore = create<ArticleState>((set, get) => ({
     }
   },
 
-  deleteArticle: async (id) => {
+  loadArchivedArticles: async () => {
+    set({ loading: true });
+    try {
+      const articles = await db.getArchivedArticles();
+      set({ articles });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  loadTrash: async () => {
+    const trashArticles = await db.getTrashArticles();
+    set({ trashArticles });
+  },
+
+  trashArticle: async (id) => {
     await db.deleteArticle(id);
+    set((state) => ({ articles: state.articles.filter((a) => a.id !== id) }));
+  },
+
+  restoreArticle: async (id) => {
+    await db.restoreArticle(id);
+    set((state) => ({
+      trashArticles: state.trashArticles.filter((a) => a.id !== id),
+    }));
+  },
+
+  permanentlyDeleteArticle: async (id) => {
+    await db.permanentlyDeleteArticle(id);
+    set((state) => ({
+      trashArticles: state.trashArticles.filter((a) => a.id !== id),
+    }));
+  },
+
+  emptyTrash: async () => {
+    await db.emptyTrash();
+    set({ trashArticles: [] });
+  },
+
+  archiveArticle: async (id) => {
+    await db.archiveArticle(id);
+    set((state) => ({ articles: state.articles.filter((a) => a.id !== id) }));
+  },
+
+  unarchiveArticle: async (id) => {
+    await db.unarchiveArticle(id);
     set((state) => ({ articles: state.articles.filter((a) => a.id !== id) }));
   },
 

@@ -1,14 +1,15 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
-  TextInput, Modal, Pressable, Alert,
+  TextInput, Modal, Pressable,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { IconTags, IconPlus, IconCheck } from '@tabler/icons-react-native';
+import { IconTags, IconPlus, IconCheck, IconTrash } from '@tabler/icons-react-native';
 import { useTagStore } from '../stores/tagStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { Tag } from '../types';
-import { palette, spacing, radius, typography } from '../theme/colors';
+import { spacing, radius, typography } from '../theme/colors';
+import { ActionSheet } from '../components/ActionSheet';
 
 const TAG_COLORS = [
   '#6366f1', '#ec4899', '#f59e0b', '#10b981',
@@ -23,6 +24,7 @@ export function TagsScreen() {
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [selectedColor, setSelectedColor] = useState(TAG_COLORS[0]);
+  const [sheetTag, setSheetTag] = useState<Tag | null>(null);
 
   useFocusEffect(useCallback(() => { loadTags(); }, [loadTags]));
 
@@ -34,22 +36,11 @@ export function TagsScreen() {
     setShowModal(false);
   }, [name, selectedColor, createTag]);
 
-  const handleDelete = useCallback((tag: Tag) => {
-    Alert.alert(
-      'Remover tag',
-      `Remover a tag "${tag.name}"? Ela sera desvinculada de todos os itens.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Remover', style: 'destructive', onPress: () => deleteTag(tag.id) },
-      ]
-    );
-  }, [deleteTag]);
-
   const renderTag = ({ item }: { item: Tag }) => (
     <TouchableOpacity
       style={[styles.tag, { backgroundColor: colors.surface, borderColor: colors.border }]}
       activeOpacity={0.7}
-      onLongPress={() => handleDelete(item)}
+      onLongPress={() => setSheetTag(item)}
     >
       <View style={[styles.tagDot, { backgroundColor: item.color }]} />
       <Text style={[styles.tagName, { color: colors.text }]}>{item.name}</Text>
@@ -81,6 +72,20 @@ export function TagsScreen() {
       >
         <IconPlus size={26} color="#fff" strokeWidth={2} />
       </TouchableOpacity>
+
+      <ActionSheet
+        visible={sheetTag != null}
+        onClose={() => setSheetTag(null)}
+        title={sheetTag?.name}
+        actions={sheetTag ? [
+          {
+            label: 'Excluir tag',
+            style: 'destructive',
+            Icon: IconTrash,
+            onPress: () => deleteTag(sheetTag.id),
+          },
+        ] : []}
+      />
 
       <Modal visible={showModal} transparent animationType="fade">
         <Pressable style={styles.overlay} onPress={() => setShowModal(false)}>

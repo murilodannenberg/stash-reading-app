@@ -5,11 +5,12 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { IconBooks, IconChevronRight, IconPlus } from '@tabler/icons-react-native';
+import { IconBooks, IconChevronRight, IconPlus, IconTrash } from '@tabler/icons-react-native';
 import { useFolderStore } from '../stores/folderStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { Folder, RootStackParamList } from '../types';
 import { spacing, radius, typography } from '../theme/colors';
+import { ActionSheet } from '../components/ActionSheet';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -22,6 +23,7 @@ export function ShelvesScreen() {
 
   const [showModal, setShowModal] = useState(false);
   const [newName, setNewName] = useState('');
+  const [sheetFolder, setSheetFolder] = useState<Folder | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -37,19 +39,8 @@ export function ShelvesScreen() {
   }, [newName, createFolder]);
 
   const handleLongPress = useCallback((folder: Folder) => {
-    Alert.alert(folder.name, undefined, [
-      {
-        text: 'Excluir estante',
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert('Remover estante', `Remover "${folder.name}" e todo seu conteúdo?`, [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Remover', style: 'destructive', onPress: () => deleteFolder(folder.id) },
-          ]),
-      },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
-  }, [deleteFolder]);
+    setSheetFolder(folder);
+  }, []);
 
   const renderItem = ({ item }: { item: Folder }) => (
     <TouchableOpacity
@@ -98,6 +89,23 @@ export function ShelvesScreen() {
       >
         <IconPlus size={26} color="#fff" strokeWidth={2} />
       </TouchableOpacity>
+
+      <ActionSheet
+        visible={sheetFolder != null}
+        onClose={() => setSheetFolder(null)}
+        title={sheetFolder?.name}
+        actions={sheetFolder ? [
+          {
+            label: 'Excluir estante',
+            style: 'destructive',
+            Icon: IconTrash,
+            onPress: () => Alert.alert('Remover estante', `Remover "${sheetFolder.name}" e todo seu conteúdo?`, [
+              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Remover', style: 'destructive', onPress: () => deleteFolder(sheetFolder.id) },
+            ]),
+          },
+        ] : []}
+      />
 
       {/* Modal de nova estante */}
       <Modal visible={showModal} transparent animationType="fade">
