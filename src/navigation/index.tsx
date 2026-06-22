@@ -23,6 +23,7 @@ import { BackupScreen } from '../screens/BackupScreen';
 
 import { RootStackParamList, MainTabParamList } from '../types';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
+import { resolveFontFamily } from '../theme/fonts';
 import { useShareStore } from '../stores/shareStore';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -44,6 +45,8 @@ function MainTabs() {
   const { prefs } = useAppThemeStore();
   const colors = getHomeColors(prefs.homeTheme);
   const accent = prefs.accentColor;
+  // App font follows the user's choice; default ('system') keeps the Georgia header.
+  const appFontFamily = resolveFontFamily(prefs.appFont);
 
   return (
     <Tab.Navigator
@@ -65,11 +68,11 @@ function MainTabs() {
           elevation: 0,
           shadowOpacity: 0,
         },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '500' },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '500', fontFamily: appFontFamily },
         headerShown: true,
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.text,
-        headerTitleStyle: { fontFamily: 'Georgia', fontWeight: '700', fontSize: 20 },
+        headerTitleStyle: { fontFamily: appFontFamily ?? 'Georgia', fontWeight: '700', fontSize: 20 },
         headerShadowVisible: false,
       })}
     >
@@ -105,6 +108,7 @@ function MainTabs() {
 export function AppNavigator() {
   const { prefs } = useAppThemeStore();
   const colors = getHomeColors(prefs.homeTheme);
+  const appFontFamily = resolveFontFamily(prefs.appFont);
   const { pendingUrl, setPendingUrl } = useShareStore();
 
   useEffect(() => {
@@ -129,7 +133,7 @@ export function AppNavigator() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
           headerTintColor: colors.text,
-          headerTitleStyle: { fontFamily: 'Georgia', fontWeight: '700', fontSize: 20 },
+          headerTitleStyle: { fontFamily: appFontFamily ?? 'Georgia', fontWeight: '700', fontSize: 20 },
           headerBackTitle: 'Voltar',
           headerShadowVisible: false,
           animation: 'slide_from_right',
