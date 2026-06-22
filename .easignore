@@ -1,8 +1,47 @@
-# Files not needed for the native build — also avoids Windows file-locks
-# (editor/antivirus holding docs open) during the EAS upload tarball.
+# EAS uses .easignore INSTEAD of .gitignore for the upload archive, so this must
+# mirror .gitignore's heavy excludes — otherwise node_modules and build caches get
+# uploaded (the ~962 MB archive). EAS reinstalls deps and rebuilds natively.
+
+# dependencies (EAS runs install itself)
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native build outputs / caches
+build/
+*.cxx/
+android/.gradle/
+android/app/build/
+android/build/
+ios/build/
+ios/Pods/
+local.properties
+
+# Metro / logs
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+
+# typescript
+*.tsbuildinfo
+
+# Docs & tooling — not needed for the native build (also avoids Windows file-locks
+# from these being open in the editor during the upload tarball)
 BRIEFING.md
 CLAUDE.md
 README.md
 docs/
 scripts/
-*.log
