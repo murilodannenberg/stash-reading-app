@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, TouchableOpacity,
+  View, Text, FlatList, SectionList, RefreshControl, StyleSheet, TouchableOpacity,
   TextInput, Modal, Pressable, Share, Image, useWindowDimensions,
   NativeSyntheticEvent, NativeScrollEvent, Alert, ActivityIndicator,
 } from 'react-native';
@@ -13,7 +13,7 @@ import {
   IconStack2, IconEyeOff, IconCircleCheck,
   IconTrash, IconArchive, IconArchiveOff, IconClock, IconTag,
   IconDownload, IconCircleCheckFilled, IconCircleMinus,
-  IconChevronDown, IconChevronUp, IconChevronRight,
+  IconChevronDown, IconChevronUp, IconChevronRight, IconArrowsSort,
 } from '@tabler/icons-react-native';
 import { ActionSheet } from '../components/ActionSheet';
 import { TagPicker } from '../components/TagPicker';
@@ -26,7 +26,15 @@ import { extractDomain, formatShortDate, formatSaved } from '../utils/format';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type StatusFilter = 'all' | 'unread' | 'read' | 'favorites' | 'archived';
+type SortMode = 'recent' | 'unread' | 'source';
+type Section = { title: string; data: Article[] };
 type TablerIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+
+const SORT_LABELS: Record<SortMode, string> = {
+  recent: 'Recentes',
+  unread: 'Não lidos primeiro',
+  source: 'Por fonte',
+};
 
 const FILTERS: { key: StatusFilter; label: string; Icon: TablerIcon }[] = [
   { key: 'all',       label: 'Todos',      Icon: IconStack2 },
@@ -99,6 +107,9 @@ export function LibraryScreen() {
   const [tagPickerArticleId, setTagPickerArticleId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [allCollapsed, setAllCollapsed] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>('recent');
+  const [showSortSheet, setShowSortSheet] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { width: screenW } = useWindowDimensions();
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
@@ -177,6 +188,66 @@ export function LibraryScreen() {
     () => filteredArticles.find((a) => !a.is_read) ?? null,
     [filteredArticles],
   );
+
+  // Group the list into sections according to the chosen sort mode.
+  const sections = useMemo<Section[]>(() => {
+    if (showFeatured && allCollapsed) return [];
+    const list = filteredArticles;
+    if (list.length === 0) return [];
+
+    if (sortMode === 'source') {
+      const map = new Map<string, Article[]>();
+      for (const a of list) {
+        const key = extractDomain(a.url) || 'Sem fonte';
+        const bucket = map.get(key);
+        if (bucket) bucket.push(a); else map.set(key, [a]);
+      }
+      return Array.from(map.entries())
+        .sort((x, y) => y[1].length - x[1].length)
+        .map(([title, data]) => ({ title, data }));
+    }
+
+    if (sortMode === 'unread') {
+      const out: Section[] = [];
+      const unread = list.filter((a) => !a.is_read);
+      const read = list.filter((a) => a.is_read);
+      if (unread.length) out.push({ title: 'Não lidos', data: unread });
+      if (read.length) out.push({ title: 'Lidos', data: read });
+      return out;
+    }
+
+    // 'recent' → buckets by saved date
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const weekAgo = startOfToday - 6 * 86400000;
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const b = { hoje: [] as Article[], semana: [] as Article[], mes: [] as Article[], antes: [] as Article[] };
+    for (const a of list) {
+      const t = new Date(a.created_at).getTime();
+      if (Number.isNaN(t) || t < startOfMonth) b.antes.push(a);
+      else if (t >= startOfToday) b.hoje.push(a);
+      else if (t >= weekAgo) b.semana.push(a);
+      else b.mes.push(a);
+    }
+    const out: Section[] = [];
+    if (b.hoje.length) out.push({ title: 'Hoje', data: b.hoje });
+    if (b.semana.length) out.push({ title: 'Esta semana', data: b.semana });
+    if (b.mes.length) out.push({ title: 'Este mês', data: b.mes });
+    if (b.antes.length) out.push({ title: 'Antes', data: b.antes });
+    return out;
+  }, [filteredArticles, sortMode, showFeatured, allCollapsed]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      if (statusFilter === 'archived') await loadArchivedArticles();
+      else if (selectedTag) await loadArticlesByTag(selectedTag);
+      else await loadArticles(null);
+      await loadTags();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [statusFilter, selectedTag, loadArchivedArticles, loadArticlesByTag, loadArticles, loadTags]);
 
   const hasActiveFilters =
     statusFilter !== 'all' || selectedTag !== null || searchQuery.trim().length > 0;
@@ -492,32 +563,52 @@ export function LibraryScreen() {
           )}
 
           <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
-          <TouchableOpacity
-            style={styles.allHeaderRow}
-            onPress={() => setAllCollapsed((v) => !v)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginBottom: 0 }]}>
-              Todos
-              <Text style={{ color: colors.textMuted, fontWeight: '400' }}> {filteredArticles.length}</Text>
-            </Text>
-            {allCollapsed
-              ? <IconChevronDown size={18} color={colors.textMuted} strokeWidth={2} />
-              : <IconChevronUp size={18} color={colors.textMuted} strokeWidth={2} />
-            }
-          </TouchableOpacity>
+          <View style={styles.allHeaderRow}>
+            <TouchableOpacity
+              style={styles.allHeaderLeft}
+              onPress={() => setAllCollapsed((v) => !v)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginBottom: 0 }]}>
+                Todos
+                <Text style={{ color: colors.textMuted, fontWeight: '400' }}> {filteredArticles.length}</Text>
+              </Text>
+              {allCollapsed
+                ? <IconChevronDown size={18} color={colors.textMuted} strokeWidth={2} />
+                : <IconChevronUp size={18} color={colors.textMuted} strokeWidth={2} />
+              }
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.sortBtn, { backgroundColor: colors.inputBg }]}
+              onPress={() => setShowSortSheet(true)}
+              activeOpacity={0.7}
+            >
+              <IconArrowsSort size={13} color={colors.textMuted} strokeWidth={1.75} />
+              <Text style={[styles.sortBtnText, { color: colors.textSecondary }]}>{SORT_LABELS[sortMode]}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
       {/* Section label when filters active */}
       {!showFeatured && (
-        <View style={styles.sectionRow}>
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+        <View style={[styles.allHeaderRow, styles.sectionRow]}>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginBottom: 0 }]}>
             {statusFilter === 'archived' ? 'Arquivados' : 'Artigos'}
             {filteredArticles.length > 0 && (
               <Text style={{ color: colors.textMuted, fontWeight: '400' }}> {filteredArticles.length}</Text>
             )}
           </Text>
+          {filteredArticles.length > 1 && (
+            <TouchableOpacity
+              style={[styles.sortBtn, { backgroundColor: colors.inputBg }]}
+              onPress={() => setShowSortSheet(true)}
+              activeOpacity={0.7}
+            >
+              <IconArrowsSort size={13} color={colors.textMuted} strokeWidth={1.75} />
+              <Text style={[styles.sortBtnText, { color: colors.textSecondary }]}>{SORT_LABELS[sortMode]}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
@@ -525,12 +616,21 @@ export function LibraryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <FlatList
-        data={showFeatured && allCollapsed ? [] : filteredArticles}
+      <SectionList
+        sections={sections}
         keyExtractor={(a) => a.id}
         renderItem={renderArticle}
+        renderSectionHeader={({ section }) => (
+          <Text style={[styles.groupHeader, { color: colors.textMuted, backgroundColor: colors.background }]}>
+            {section.title}
+          </Text>
+        )}
+        stickySectionHeadersEnabled={false}
         ListHeaderComponent={ListHeader}
         contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={accent} colors={[accent]} />
+        }
         ItemSeparatorComponent={() => (
           <View style={[styles.separator, { backgroundColor: colors.border }]} />
         )}
@@ -622,6 +722,18 @@ export function LibraryScreen() {
         visible={tagPickerArticleId != null}
         onClose={() => setTagPickerArticleId(null)}
         articleId={tagPickerArticleId ?? ''}
+      />
+
+      {/* Sort action sheet */}
+      <ActionSheet
+        visible={showSortSheet}
+        onClose={() => setShowSortSheet(false)}
+        title="Ordenar por"
+        actions={(Object.keys(SORT_LABELS) as SortMode[]).map((mode) => ({
+          label: SORT_LABELS[mode],
+          Icon: sortMode === mode ? IconCircleCheck : IconArrowsSort,
+          onPress: () => setSortMode(mode),
+        }))}
       />
 
       {/* Filter bottom sheet */}
@@ -839,6 +951,16 @@ const styles = StyleSheet.create({
   allHeaderRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingRight: spacing.lg, marginBottom: spacing.sm,
+  },
+  allHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  sortBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: radius.full,
+  },
+  sortBtnText: { fontSize: 12, fontWeight: '500' },
+  groupHeader: {
+    fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xs,
   },
   expandBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
