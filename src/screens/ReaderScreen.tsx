@@ -9,7 +9,7 @@ import {
   IconShare2, IconTextSize, IconAlertCircle,
   IconMinus, IconPlus, IconLineHeight, IconCheck,
   IconHighlight, IconBookmark, IconBookmarkFilled,
-  IconPencil, IconX,
+  IconPencil, IconX, IconDownload, IconCircleCheckFilled,
 } from '@tabler/icons-react-native';
 import WebView from 'react-native-webview';
 import type { WebViewMessageEvent } from 'react-native-webview';
@@ -223,6 +223,7 @@ export function ReaderScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editText, setEditText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const webViewRef = useRef<any>(null);
@@ -230,7 +231,7 @@ export function ReaderScreen() {
   const { prefs, setFontSize, setFontFamily, setTheme, setLineHeight, _hydrate } = useReadingPrefsStore();
   const accent = useAppThemeStore((s) => s.prefs.accentColor);
   const { articleHighlights, loadArticleHighlights, addHighlight } = useHighlightStore();
-  const { toggleFavorite } = useArticleStore();
+  const { toggleFavorite, downloadArticle } = useArticleStore();
   const { importFile } = useFileStore();
 
   useEffect(() => { _hydrate(); }, [_hydrate]);
@@ -250,13 +251,16 @@ export function ReaderScreen() {
   const articleSource = useMemo(() => {
     if (!article) return null;
     const html = buildArticleHtml(article, prefs, accent);
-    // When there's a local cover, give the WebView a file:// base origin so the
-    // <img class="cover"> can read it (needs allowFileAccessFromFileURLs). The cover
-    // then lives in the DOM: it scrolls with the text and sizes to its natural ratio.
-    const cover = article.cover_image_path;
-    if (cover) {
-      const baseUrl = cover.substring(0, cover.lastIndexOf('/') + 1);
-      return { html, baseUrl };
+    // Local resources (cover + downloaded body images) live under the app document
+    // dir. Give the WebView a file:// base origin so allowFileAccessFromFileURLs can
+    // read them — the images then live in the DOM and scroll with the text.
+    if (article.cover_image_path || article.is_downloaded) {
+      const docUri = Paths.document?.uri;
+      const fallback = article.cover_image_path
+        ? article.cover_image_path.substring(0, article.cover_image_path.lastIndexOf('/') + 1)
+        : undefined;
+      const baseUrl = docUri ?? fallback;
+      return baseUrl ? { html, baseUrl } : { html };
     }
     return { html };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -324,6 +328,30 @@ export function ReaderScreen() {
     toggleFavorite(article.id);
     setIsFavorite((v) => !v);
   }, [article, toggleFavorite]);
+
+  const handleDownload = useCallback(async () => {
+    if (!article || downloading) return;
+    if (article.is_downloaded) {
+      Alert.alert('Disponível offline', 'Este artigo já está salvo com as imagens para leitura offline.');
+      return;
+    }
+    setDownloading(true);
+    try {
+      const count = await downloadArticle(article.id);
+      const fresh = await getArticleById(article.id);
+      if (fresh) setArticle(fresh);
+      Alert.alert(
+        'Pronto para offline',
+        count > 0
+          ? `Artigo e ${count} ${count === 1 ? 'imagem salva' : 'imagens salvas'} no aparelho.`
+          : 'Artigo salvo. Não havia imagens para baixar.',
+      );
+    } catch {
+      Alert.alert('Erro', 'Não foi possível baixar o artigo completo.');
+    } finally {
+      setDownloading(false);
+    }
+  }, [article, downloading, downloadArticle]);
 
   const handleShare = useCallback(() => {
     if (!article) return;
@@ -416,6 +444,14 @@ export function ReaderScreen() {
               : <IconBookmark size={20} color={accent} strokeWidth={1.75} />
             }
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleDownload} style={headerStyles.btn} disabled={downloading}>
+            {downloading
+              ? <ActivityIndicator size="small" color={accent} />
+              : article?.is_downloaded
+                ? <IconCircleCheckFilled size={20} color={accent} />
+                : <IconDownload size={20} color={accent} strokeWidth={1.75} />
+            }
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation.navigate('MainTabs', { screen: 'Highlights' })}
             style={headerStyles.btn}
@@ -438,7 +474,7 @@ export function ReaderScreen() {
         </View>
       ),
     });
-  }, [navigation, toggleSettings, handleShare, handleToggleFavorite, handleOpenEdit, accent, articleHighlights.length, isFavorite]);
+  }, [navigation, toggleSettings, handleShare, handleToggleFavorite, handleOpenEdit, handleDownload, downloading, article?.is_downloaded, accent, articleHighlights.length, isFavorite]);
 
   if (loading) {
     return (

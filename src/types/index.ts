@@ -26,6 +26,7 @@ export interface Article {
   is_read: boolean;
   is_favorite: boolean;
   is_archived: boolean;
+  is_downloaded: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

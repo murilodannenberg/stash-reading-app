@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Article } from '../types';
 import * as db from '../database';
+import { downloadArticleImages } from '../services/imageStorage';
 
 interface ArticleState {
   articles: Article[];
@@ -20,6 +21,7 @@ interface ArticleState {
   // Other mutations
   markAsRead: (id: string, isRead: boolean) => Promise<void>;
   toggleFavorite: (id: string) => Promise<void>;
+  downloadArticle: (id: string) => Promise<number>;
   searchArticles: (query: string) => Promise<Article[]>;
   // Trash list (separate from main articles list)
   trashArticles: Article[];
@@ -119,6 +121,19 @@ export const useArticleStore = create<ArticleState>((set, get) => ({
         a.id === id ? { ...a, is_favorite: newValue } : a
       ),
     }));
+  },
+
+  downloadArticle: async (id) => {
+    const article = await db.getArticleById(id);
+    if (!article || !article.content_html) return 0;
+    const { html, count } = await downloadArticleImages(id, article.content_html);
+    await db.setArticleDownloaded(id, html);
+    set((state) => ({
+      articles: state.articles.map((a) =>
+        a.id === id ? { ...a, content_html: html, is_downloaded: true } : a
+      ),
+    }));
+    return count;
   },
 
   searchArticles: async (query) => {

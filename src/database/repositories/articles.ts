@@ -14,6 +14,7 @@ function rowToArticle(row: Record<string, unknown>): Article {
     is_read: Boolean(row['is_read']),
     is_favorite: Boolean(row['is_favorite']),
     is_archived: Boolean(row['is_archived']),
+    is_downloaded: Boolean(row['is_downloaded']),
   };
 }
 
@@ -100,6 +101,7 @@ export async function createArticle(input: CreateArticleInput): Promise<Article>
     is_read: false,
     is_favorite: false,
     is_archived: false,
+    is_downloaded: false,
     created_at: now,
     updated_at: now,
     deleted_at: null,
@@ -195,6 +197,14 @@ export async function updateArticleContent(id: string, contentText: string, cont
   await db.runAsync(
     'UPDATE articles SET content_text = ?, content_html = ?, updated_at = ? WHERE id = ?',
     [contentText, contentHtml, nowISO(), id],
+  );
+}
+
+export async function setArticleDownloaded(id: string, contentHtml: string): Promise<void> {
+  const db = getDatabase();
+  await db.runAsync(
+    'UPDATE articles SET content_html = ?, is_downloaded = 1, updated_at = ? WHERE id = ?',
+    [contentHtml, nowISO(), id],
   );
 }
 

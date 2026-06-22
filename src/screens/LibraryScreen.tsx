@@ -2,7 +2,7 @@ import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import {
   View, Text, FlatList, ScrollView, StyleSheet, TouchableOpacity,
   TextInput, Modal, Pressable, Share, Image, useWindowDimensions,
-  NativeSyntheticEvent, NativeScrollEvent,
+  NativeSyntheticEvent, NativeScrollEvent, Alert,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,6 +12,7 @@ import {
   IconAdjustments, IconX, IconCircleX,
   IconStack2, IconEyeOff, IconCircleCheck,
   IconTrash, IconArchive, IconArchiveOff, IconClock, IconTag,
+  IconDownload, IconCircleCheckFilled,
 } from '@tabler/icons-react-native';
 import { ActionSheet } from '../components/ActionSheet';
 import { TagPicker } from '../components/TagPicker';
@@ -37,7 +38,7 @@ export function LibraryScreen() {
   const navigation = useNavigation<Nav>();
   const {
     articles, loadArticles, loadArticlesByTag, loadArchivedArticles,
-    trashArticle, archiveArticle, unarchiveArticle, toggleFavorite,
+    trashArticle, archiveArticle, unarchiveArticle, toggleFavorite, downloadArticle,
   } = useArticleStore();
   const { tags, loadTags } = useTagStore();
   const { prefs: appTheme, _hydrate } = useAppThemeStore();
@@ -143,6 +144,24 @@ export function LibraryScreen() {
       title: article.title,
     });
   }, []);
+
+  const handleDownloadArticle = useCallback(async (article: Article) => {
+    if (article.is_downloaded) {
+      Alert.alert('Disponível offline', 'Este artigo já está salvo para leitura offline.');
+      return;
+    }
+    try {
+      const count = await downloadArticle(article.id);
+      Alert.alert(
+        'Pronto para offline',
+        count > 0
+          ? `Artigo e ${count} ${count === 1 ? 'imagem salva' : 'imagens salvas'} no aparelho.`
+          : 'Artigo salvo. Não havia imagens para baixar.',
+      );
+    } catch {
+      Alert.alert('Erro', 'Não foi possível baixar o artigo completo.');
+    }
+  }, [downloadArticle]);
 
   // ─── Hero card ─────────────────────────────────────────────────────────────
 
@@ -484,6 +503,11 @@ export function LibraryScreen() {
             label: 'Compartilhar',
             Icon: IconShare2,
             onPress: () => handleShareArticle(sheetArticle),
+          },
+          {
+            label: sheetArticle.is_downloaded ? 'Disponível offline' : 'Baixar para offline',
+            Icon: sheetArticle.is_downloaded ? IconCircleCheckFilled : IconDownload,
+            onPress: () => handleDownloadArticle(sheetArticle),
           },
           {
             label: 'Gerenciar tags',
