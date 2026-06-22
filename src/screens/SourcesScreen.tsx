@@ -175,7 +175,7 @@ export function SourcesScreen() {
                 style={[renameStyles.input, { color: colors.text }]}
                 value={renameText}
                 onChangeText={setRenameText}
-                placeholder="Nome personalizado (deixe vazio para usar o original)"
+                placeholder="Nome personalizado"
                 placeholderTextColor={colors.textMuted}
                 autoFocus
                 returnKeyType="done"

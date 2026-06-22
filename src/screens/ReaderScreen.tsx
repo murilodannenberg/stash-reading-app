@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
-  View, Text, StyleSheet, Image,
+  View, Text, StyleSheet, Image, useWindowDimensions,
   ActivityIndicator, TouchableOpacity, Modal, Share,
   Alert, TextInput, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
@@ -208,6 +208,7 @@ export function ReaderScreen() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigation = useNavigation<any>();
   const { articleId } = route.params;
+  const { width: screenW, height: screenH } = useWindowDimensions();
 
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
@@ -219,6 +220,7 @@ export function ReaderScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editText, setEditText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [coverAspect, setCoverAspect] = useState<number | null>(null);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const webViewRef = useRef<any>(null);
@@ -238,6 +240,13 @@ export function ReaderScreen() {
       if (a) {
         setIsFavorite(a.is_favorite);
         if (!a.is_read) markAsRead(articleId, true);
+        if (a.cover_image_path) {
+          Image.getSize(
+            a.cover_image_path,
+            (w, h) => { if (w > 0 && h > 0) setCoverAspect(w / h); },
+            () => setCoverAspect(16 / 9),
+          );
+        }
       }
     });
     loadArticleHighlights(articleId);
@@ -404,7 +413,7 @@ export function ReaderScreen() {
             }
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => navigation.navigate('Highlights')}
+            onPress={() => navigation.navigate('MainTabs', { screen: 'Highlights' })}
             style={headerStyles.btn}
           >
             <View>
@@ -454,17 +463,21 @@ export function ReaderScreen() {
         <View style={[styles.progressBar, { width: `${readProgress * 100}%`, backgroundColor: accent }]} />
       </View>
 
-      {/* Cover image — displayed natively so file:// URIs work on all Android versions */}
-      {article?.cover_image_path != null && (
-        <View style={styles.coverWrap}>
-          <Image
-            source={{ uri: article.cover_image_path }}
-            style={styles.coverImg}
-            resizeMode="cover"
-          />
-          <View style={[styles.coverScrim, { backgroundColor: prefs.backgroundColor }]} />
-        </View>
-      )}
+      {/* Cover image — native render adapts to any aspect ratio (square/vertical/horizontal) */}
+      {article?.cover_image_path != null && (() => {
+        const natural = coverAspect ? screenW / coverAspect : screenW * 0.5;
+        const coverH = Math.max(150, Math.min(natural, screenH * 0.5));
+        return (
+          <View style={[styles.coverWrap, { height: coverH }]}>
+            <Image
+              source={{ uri: article.cover_image_path }}
+              style={styles.coverImg}
+              resizeMode="cover"
+            />
+            <View style={[styles.coverScrim, { backgroundColor: prefs.backgroundColor }]} />
+          </View>
+        );
+      })()}
 
       {/* @ts-ignore */}
       <WebView
@@ -658,9 +671,9 @@ const styles = StyleSheet.create({
   backLink: { fontSize: 16, fontWeight: '600' },
   progressTrack: { height: 2, backgroundColor: 'transparent' },
   progressBar: { height: 2, borderRadius: 1 },
-  coverWrap: { width: '100%', height: 220, position: 'relative' },
+  coverWrap: { width: '100%', position: 'relative', backgroundColor: 'rgba(0,0,0,0.04)' },
   coverImg: { width: '100%', height: '100%' },
-  coverScrim: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 48, opacity: 0.55 },
+  coverScrim: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 40, opacity: 0.6 },
   toast: {
     position: 'absolute',
     top: 12,

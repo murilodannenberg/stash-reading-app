@@ -11,26 +11,46 @@ import { useAppThemeStore } from './src/stores/appThemeStore';
 import { useShareStore } from './src/stores/shareStore';
 import { getSharedUrl, clearSharedUrl, extractUrl } from './src/services/shareIntent';
 import { Colors } from './src/theme/tokens';
+import { AppLogo } from './src/components/AppLogo';
 
 function SplashLogo() {
-  const scale = useRef(new Animated.Value(0.7)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.6)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoLift = useRef(new Animated.Value(12)).current;
+  const nameOpacity = useRef(new Animated.Value(0)).current;
+  const nameLift = useRef(new Animated.Value(10)).current;
+  const lineScale = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+    Animated.sequence([
+      Animated.parallel([
+        Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
+        Animated.timing(logoOpacity, { toValue: 1, duration: 380, useNativeDriver: true }),
+        Animated.timing(logoLift, { toValue: 0, duration: 420, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(nameOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
+        Animated.timing(nameLift, { toValue: 0, duration: 360, useNativeDriver: true }),
+        Animated.spring(lineScale, { toValue: 1, tension: 60, friction: 9, useNativeDriver: true }),
+      ]),
     ]).start();
-  }, [opacity, scale]);
+  }, [logoScale, logoOpacity, logoLift, nameOpacity, nameLift, lineScale]);
 
   return (
     <View style={styles.center}>
-      <Animated.View style={[styles.logoWrap, { opacity, transform: [{ scale }] }]}>
-        <View style={styles.logoMark}>
-          <Text style={styles.logoLetter}>S</Text>
-        </View>
-        <Text style={styles.logoName}>Stash</Text>
+      <Animated.View
+        style={{ opacity: logoOpacity, transform: [{ scale: logoScale }, { translateY: logoLift }] }}
+      >
+        <AppLogo size={92} />
       </Animated.View>
+      <Animated.Text
+        style={[styles.logoName, { opacity: nameOpacity, transform: [{ translateY: nameLift }] }]}
+      >
+        Stash
+      </Animated.Text>
+      <Animated.View
+        style={[styles.logoLine, { transform: [{ scaleX: lineScale }] }]}
+      />
     </View>
   );
 }
@@ -105,20 +125,13 @@ const styles = StyleSheet.create({
   center: {
     flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.papel,
   },
-  logoWrap: { alignItems: 'center', gap: 16 },
-  logoMark: {
-    width: 80, height: 80, borderRadius: 22,
-    backgroundColor: Colors.ambar + '18',
-    borderWidth: 1.5, borderColor: Colors.ambar + '40',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  logoLetter: {
-    fontSize: 40, fontWeight: '700', color: Colors.ambar,
-    fontFamily: 'Georgia', letterSpacing: -1,
-  },
   logoName: {
-    fontSize: 22, fontWeight: '700', color: Colors.tinta,
-    fontFamily: 'Georgia', letterSpacing: -0.5,
+    fontSize: 24, fontWeight: '700', color: Colors.tinta,
+    fontFamily: 'Georgia', letterSpacing: -0.5, marginTop: 18,
+  },
+  logoLine: {
+    width: 40, height: 3, borderRadius: 2,
+    backgroundColor: Colors.ambar, marginTop: 12,
   },
   errorTitle: { fontSize: 18, fontWeight: '700', color: '#ef4444', marginBottom: 8 },
   errorText: { fontSize: 14, color: '#374151', textAlign: 'center', paddingHorizontal: 32 },

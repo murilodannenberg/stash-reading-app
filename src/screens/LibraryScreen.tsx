@@ -1,7 +1,8 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import {
   View, Text, FlatList, ScrollView, StyleSheet, TouchableOpacity,
-  TextInput, Modal, Pressable, Share, Image,
+  TextInput, Modal, Pressable, Share, Image, useWindowDimensions,
+  NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -49,6 +50,8 @@ export function LibraryScreen() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [tagPickerArticleId, setTagPickerArticleId] = useState<string | null>(null);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const { width: screenW } = useWindowDimensions();
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
   useEffect(() => {
@@ -363,11 +366,46 @@ export function LibraryScreen() {
       {showFeatured && (
         <View>
           <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginTop: spacing.xl }]}>
-            Salvo recentemente
+            Em destaque
           </Text>
-          <HeroCard article={filteredArticles[0]} />
 
-          {filteredArticles.length > 1 && (
+          {filteredArticles.slice(0, 3).length > 1 ? (
+            <>
+              <FlatList
+                data={filteredArticles.slice(0, 3)}
+                keyExtractor={(a) => a.id}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                decelerationRate="fast"
+                renderItem={({ item }) => (
+                  <View style={{ width: screenW }}>
+                    <HeroCard article={item} />
+                  </View>
+                )}
+                onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / screenW);
+                  setFeaturedIndex(idx);
+                }}
+              />
+              <View style={styles.dotsRow}>
+                {filteredArticles.slice(0, 3).map((a: Article, i: number) => (
+                  <View
+                    key={a.id}
+                    style={[
+                      styles.dot,
+                      { backgroundColor: i === featuredIndex ? accent : colors.border },
+                      i === featuredIndex && styles.dotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            </>
+          ) : (
+            <HeroCard article={filteredArticles[0]} />
+          )}
+
+          {filteredArticles.length > 3 && (
             <>
               <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginTop: spacing.lg }]}>
                 Adicionados recentemente
@@ -377,7 +415,7 @@ export function LibraryScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.recentRow}
               >
-                {filteredArticles.slice(1, 5).map((article) => (
+                {filteredArticles.slice(3, 7).map((article) => (
                   <RecentCard key={article.id} article={article} />
                 ))}
               </ScrollView>
@@ -657,6 +695,14 @@ const styles = StyleSheet.create({
   },
   heroAuthor: { fontSize: 13, marginBottom: spacing.xs },
   heroExcerpt: { fontSize: 13, lineHeight: 19, marginTop: spacing.xs },
+
+  // ── Featured carousel dots ──────────────────────────────────────────────────
+  dotsRow: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    gap: 6, marginTop: spacing.md,
+  },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  dotActive: { width: 18 },
 
   // ── Recent cards row ────────────────────────────────────────────────────────
   recentRow: {
