@@ -87,7 +87,7 @@ h3{font-size:var(--fs-3);font-weight:600;margin:16px 0 6px}
 h4,h5,h6{font-size:var(--fs);font-weight:600;margin:12px 0 4px}
 a{color:var(--ac);text-decoration:underline}
 img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:6px;cursor:pointer}
-.cover{width:100%;height:auto;border-radius:12px;margin:0 0 18px;display:block;}
+.cover{width:100%;height:auto;max-height:78vh;object-fit:contain;border-radius:12px;margin:0 0 18px;display:block;}
 figure{margin:12px 0}
 figcaption{font-size:var(--fs-s);opacity:.6;margin-top:4px}
 blockquote{border-left:3px solid currentColor;opacity:.7;padding-left:14px;margin:12px 0;font-style:italic}

@@ -34,6 +34,49 @@ const FILTERS: { key: StatusFilter; label: string; Icon: TablerIcon }[] = [
   { key: 'archived',  label: 'Arquivados', Icon: IconArchive },
 ];
 
+// Self-contained so swiping updates only its own state — keeping the carousel from
+// remounting (which reset it to the previous slide) when the parent list re-renders.
+type FeaturedCarouselProps = {
+  data: Article[];
+  width: number;
+  accent: string;
+  dotColor: string;
+  renderCard: (article: Article) => React.ReactNode;
+};
+
+function FeaturedCarousel({ data, width, accent, dotColor, renderCard }: FeaturedCarouselProps) {
+  const [index, setIndex] = useState(0);
+  const active = Math.min(index, data.length - 1);
+  return (
+    <>
+      <FlatList
+        data={data}
+        keyExtractor={(a) => a.id}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        renderItem={({ item }) => <View style={{ width }}>{renderCard(item)}</View>}
+        onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+          setIndex(Math.round(e.nativeEvent.contentOffset.x / width));
+        }}
+      />
+      <View style={styles.dotsRow}>
+        {data.map((a, i) => (
+          <View
+            key={a.id}
+            style={[
+              styles.dot,
+              { backgroundColor: i === active ? accent : dotColor },
+              i === active && styles.dotActive,
+            ]}
+          />
+        ))}
+      </View>
+    </>
+  );
+}
+
 export function LibraryScreen() {
   const navigation = useNavigation<Nav>();
   const {
@@ -51,7 +94,6 @@ export function LibraryScreen() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [tagPickerArticleId, setTagPickerArticleId] = useState<string | null>(null);
-  const [featuredIndex, setFeaturedIndex] = useState(0);
   const { width: screenW } = useWindowDimensions();
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
@@ -389,37 +431,13 @@ export function LibraryScreen() {
           </Text>
 
           {filteredArticles.slice(0, 3).length > 1 ? (
-            <>
-              <FlatList
-                data={filteredArticles.slice(0, 3)}
-                keyExtractor={(a) => a.id}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                decelerationRate="fast"
-                renderItem={({ item }) => (
-                  <View style={{ width: screenW }}>
-                    <HeroCard article={item} />
-                  </View>
-                )}
-                onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                  const idx = Math.round(e.nativeEvent.contentOffset.x / screenW);
-                  setFeaturedIndex(idx);
-                }}
-              />
-              <View style={styles.dotsRow}>
-                {filteredArticles.slice(0, 3).map((a: Article, i: number) => (
-                  <View
-                    key={a.id}
-                    style={[
-                      styles.dot,
-                      { backgroundColor: i === featuredIndex ? accent : colors.border },
-                      i === featuredIndex && styles.dotActive,
-                    ]}
-                  />
-                ))}
-              </View>
-            </>
+            <FeaturedCarousel
+              data={filteredArticles.slice(0, 3)}
+              width={screenW}
+              accent={accent}
+              dotColor={colors.border}
+              renderCard={(a) => <HeroCard article={a} />}
+            />
           ) : (
             <HeroCard article={filteredArticles[0]} />
           )}

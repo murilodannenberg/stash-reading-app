@@ -14,15 +14,17 @@ const TINTA = '#1C1917';
 const CINZA = '#9B9189';
 const BORDER = '#E5DFD7';
 
-// The page mark, authored in a 108×108 square viewBox, centered.
+// The page mark, authored in a 108×108 square viewBox, centered with generous
+// padding so it sits comfortably inside the adaptive-icon safe zone (and the
+// launcher mask) without crowding the edges.
 function pageMark() {
   return `
-    <path d="M31,24 L67,24 L78,35 L78,84 L31,84 Z" fill="${PAPEL}" stroke="${BORDER}" stroke-width="1"/>
-    <path d="M67,24 L78,35 L67,35 Z" fill="${TINTA}" opacity="0.92"/>
-    <line x1="40" y1="45" x2="69" y2="45" stroke="${AMBAR}" stroke-width="3.4" stroke-linecap="round"/>
-    <line x1="40" y1="56" x2="69" y2="56" stroke="${CINZA}" stroke-width="2.4" stroke-linecap="round"/>
-    <line x1="40" y1="65" x2="69" y2="65" stroke="${CINZA}" stroke-width="2.4" stroke-linecap="round"/>
-    <line x1="40" y1="74" x2="60" y2="74" stroke="${CINZA}" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M36,31 L63,31 L72,40 L72,77 L36,77 Z" fill="${PAPEL}" stroke="${BORDER}" stroke-width="1"/>
+    <path d="M63,31 L72,40 L63,40 Z" fill="${TINTA}" opacity="0.92"/>
+    <line x1="43" y1="45" x2="65" y2="45" stroke="${AMBAR}" stroke-width="2.8" stroke-linecap="round"/>
+    <line x1="43" y1="54" x2="65" y2="54" stroke="${CINZA}" stroke-width="2" stroke-linecap="round"/>
+    <line x1="43" y1="62" x2="65" y2="62" stroke="${CINZA}" stroke-width="2" stroke-linecap="round"/>
+    <line x1="43" y1="70" x2="57" y2="70" stroke="${CINZA}" stroke-width="2" stroke-linecap="round"/>
   `;
 }
 
@@ -80,5 +82,17 @@ const adaptiveXml = `<?xml version="1.0" encoding="utf-8"?>
 writeFileSync(join(anydpi, 'ic_launcher.xml'), adaptiveXml);
 writeFileSync(join(anydpi, 'ic_launcher_round.xml'), adaptiveXml);
 console.log('mipmap-anydpi-v26: ic_launcher.xml + ic_launcher_round.xml');
+
+// Store-facing assets referenced by app.json (kept in sync with the launcher icon).
+const assets = join(ROOT, 'assets');
+mkdirSync(assets, { recursive: true });
+const svgLegacyFlat = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <rect width="108" height="108" fill="${AMBAR}"/>
+  ${pageMark()}
+</svg>`;
+writeFileSync(join(assets, 'icon.png'), render(svgLegacyFlat, 1024));
+writeFileSync(join(assets, 'adaptive-icon.png'), render(svgForeground, 1024));
+writeFileSync(join(assets, 'splash.png'), render(svgLegacyFlat, 1024));
+console.log('assets: icon.png, adaptive-icon.png, splash.png (1024px)');
 
 console.log('Done.');
