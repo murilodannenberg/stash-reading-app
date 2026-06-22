@@ -13,13 +13,14 @@ import {
   HOME_THEMES, HomeThemeKey,
   spacing, radius, typography,
 } from '../theme/colors';
+import { APP_FONTS, AppFontKey } from '../theme/fonts';
 import { Colors } from '../theme/tokens';
 import { RootStackParamList } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function SettingsScreen() {
-  const { prefs, _hydrate, setHomeTheme } = useAppThemeStore();
+  const { prefs, _hydrate, setHomeTheme, setAppFont } = useAppThemeStore();
   const colors = getHomeColors(prefs.homeTheme);
   const accent = prefs.accentColor;
   const navigation = useNavigation<Nav>();
@@ -94,6 +95,39 @@ export function SettingsScreen() {
                     <IconCheck size={10} color="#fff" strokeWidth={2.5} />
                   </View>
                 )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Fonte do app */}
+      <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+        Fonte do app
+      </Text>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.fontRow}>
+          {(Object.keys(APP_FONTS) as AppFontKey[]).map((key) => {
+            const isActive = prefs.appFont === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.fontBtn,
+                  { borderColor: isActive ? accent : colors.border, backgroundColor: isActive ? accent + '12' : 'transparent' },
+                ]}
+                onPress={() => setAppFont(key)}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.fontPreview,
+                  { color: isActive ? accent : colors.text, fontFamily: APP_FONTS[key].family },
+                ]}>
+                  Aa
+                </Text>
+                <Text style={[styles.fontLabel, { color: isActive ? accent : colors.textMuted }]}>
+                  {APP_FONTS[key].label}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -247,6 +281,15 @@ const styles = StyleSheet.create({
     width: 16, height: 16, borderRadius: 8,
     justifyContent: 'center', alignItems: 'center',
   },
+
+  // Font picker
+  fontRow: { flexDirection: 'row', gap: spacing.sm },
+  fontBtn: {
+    flex: 1, borderRadius: radius.md, borderWidth: 1.5,
+    paddingVertical: spacing.md, alignItems: 'center', gap: 2,
+  },
+  fontPreview: { fontSize: 22, fontWeight: '700' },
+  fontLabel: { fontSize: 12, fontWeight: '500' },
 
   // Menu rows
   menuRow: {

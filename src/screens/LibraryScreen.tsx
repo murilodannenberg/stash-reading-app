@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import {
-  View, Text, FlatList, ScrollView, StyleSheet, TouchableOpacity,
+  View, Text, FlatList, StyleSheet, TouchableOpacity,
   TextInput, Modal, Pressable, Share, Image, useWindowDimensions,
   NativeSyntheticEvent, NativeScrollEvent, Alert, ActivityIndicator,
 } from 'react-native';
@@ -13,6 +13,7 @@ import {
   IconStack2, IconEyeOff, IconCircleCheck,
   IconTrash, IconArchive, IconArchiveOff, IconClock, IconTag,
   IconDownload, IconCircleCheckFilled, IconCircleMinus,
+  IconChevronDown, IconChevronUp, IconChevronRight,
 } from '@tabler/icons-react-native';
 import { ActionSheet } from '../components/ActionSheet';
 import { TagPicker } from '../components/TagPicker';
@@ -21,6 +22,7 @@ import { useTagStore } from '../stores/tagStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { RootStackParamList, Article, Tag } from '../types';
 import { spacing, radius, typography, palette } from '../theme/colors';
+import { extractDomain, formatShortDate, formatSaved } from '../utils/format';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type StatusFilter = 'all' | 'unread' | 'read' | 'favorites' | 'archived';
@@ -96,6 +98,7 @@ export function LibraryScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [tagPickerArticleId, setTagPickerArticleId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [allCollapsed, setAllCollapsed] = useState(false);
   const { width: screenW } = useWindowDimensions();
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
@@ -168,6 +171,12 @@ export function LibraryScreen() {
 
   const showFeatured =
     statusFilter === 'all' && !selectedTag && !searchQuery.trim() && filteredArticles.length > 0;
+
+  // Most recently saved article that's still unread — the "pick up next" suggestion.
+  const nextUnread = useMemo(
+    () => filteredArticles.find((a) => !a.is_read) ?? null,
+    [filteredArticles],
+  );
 
   const hasActiveFilters =
     statusFilter !== 'all' || selectedTag !== null || searchQuery.trim().length > 0;
@@ -287,41 +296,36 @@ export function LibraryScreen() {
     );
   };
 
-  // ─── Recent card ───────────────────────────────────────────────────────────
+  // ─── Next-read card (single, compact) ──────────────────────────────────────
 
-  const RecentCard = ({ article }: { article: Article }) => {
-    const hasImage = article.cover_image_path != null;
+  const NextReadCard = ({ article }: { article: Article }) => {
+    const domain = extractDomain(article.url);
     return (
       <TouchableOpacity
-        style={[styles.recentCard, { backgroundColor: colors.surface }]}
-        activeOpacity={0.85}
+        style={[styles.nextCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        activeOpacity={0.8}
         onPress={() => navigation.navigate('Reader', { articleId: article.id })}
         onLongPress={() => setSheetArticle(article)}
       >
-        {hasImage ? (
-          <Image
-            source={{ uri: article.cover_image_path! }}
-            style={styles.recentImage}
-            resizeMode="cover"
-          />
+        {article.cover_image_path != null ? (
+          <Image source={{ uri: article.cover_image_path }} style={styles.nextThumb} resizeMode="cover" />
         ) : (
-          <View style={[styles.recentImage, styles.recentPlaceholder, { backgroundColor: accent + '14' }]}>
-            <IconFileText size={26} color={accent} strokeWidth={1.25} />
+          <View style={[styles.nextThumb, styles.nextThumbPlaceholder, { backgroundColor: accent + '14' }]}>
+            <IconFileText size={20} color={accent} strokeWidth={1.25} />
           </View>
         )}
-        <View style={styles.recentBody}>
-          {!article.is_read && (
-            <View style={[styles.recentDot, { backgroundColor: accent }]} />
-          )}
-          <Text style={[styles.recentTitle, { color: colors.text }]} numberOfLines={3}>
+        <View style={styles.nextBody}>
+          <Text style={[styles.nextTitle, { color: colors.text }]} numberOfLines={2}>
             {article.title}
           </Text>
-          {article.reading_time_min != null && (
-            <Text style={[styles.recentTime, { color: colors.textMuted }]}>
-              {article.reading_time_min} min
+          {(domain || article.reading_time_min != null) && (
+            <Text style={[styles.nextMeta, { color: colors.textMuted }]} numberOfLines={1}>
+              {[domain, article.reading_time_min != null ? `${article.reading_time_min} min` : null]
+                .filter(Boolean).join(' · ')}
             </Text>
           )}
         </View>
+        <IconChevronRight size={18} color={colors.textMuted} strokeWidth={2} />
       </TouchableOpacity>
     );
   };
@@ -357,14 +361,22 @@ export function LibraryScreen() {
         >
           {item.title}
         </Text>
-        {(item.author != null || item.reading_time_min != null) && (
-          <Text style={[styles.metaText, { color: colors.textMuted }]} numberOfLines={1}>
-            {[
-              item.author,
-              item.reading_time_min != null ? `${item.reading_time_min} min` : null,
-            ].filter(Boolean).join(' · ')}
-          </Text>
-        )}
+        {(() => {
+          const domain = extractDomain(item.url);
+          const top = [
+            domain || item.author,
+            item.reading_time_min != null ? `${item.reading_time_min} min` : null,
+          ].filter(Boolean).join(' · ');
+          return top ? (
+            <Text style={[styles.metaText, { color: colors.textMuted }]} numberOfLines={1}>
+              {top}
+            </Text>
+          ) : null;
+        })()}
+        <Text style={[styles.dateText, { color: colors.textMuted }]} numberOfLines={1}>
+          {`Salvo ${formatSaved(item.created_at)}`}
+          {item.published_at ? ` · publicado ${formatShortDate(item.published_at)}` : ''}
+        </Text>
         {item.is_downloaded && (
           <View style={styles.offlineRow}>
             <IconCircleCheckFilled size={12} color={accent} />
@@ -470,28 +482,30 @@ export function LibraryScreen() {
             <HeroCard article={filteredArticles[0]} />
           )}
 
-          {filteredArticles.length > 3 && (
+          {nextUnread && (
             <>
               <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginTop: spacing.lg }]}>
-                Adicionados recentemente
+                Próxima leitura
               </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.recentRow}
-              >
-                {filteredArticles.slice(3, 7).map((article) => (
-                  <RecentCard key={article.id} article={article} />
-                ))}
-              </ScrollView>
+              <NextReadCard article={nextUnread} />
             </>
           )}
 
           <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-            Todos
-            <Text style={{ color: colors.textMuted, fontWeight: '400' }}> {filteredArticles.length}</Text>
-          </Text>
+          <TouchableOpacity
+            style={styles.allHeaderRow}
+            onPress={() => setAllCollapsed((v) => !v)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginBottom: 0 }]}>
+              Todos
+              <Text style={{ color: colors.textMuted, fontWeight: '400' }}> {filteredArticles.length}</Text>
+            </Text>
+            {allCollapsed
+              ? <IconChevronDown size={18} color={colors.textMuted} strokeWidth={2} />
+              : <IconChevronUp size={18} color={colors.textMuted} strokeWidth={2} />
+            }
+          </TouchableOpacity>
         </View>
       )}
 
@@ -512,7 +526,7 @@ export function LibraryScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
-        data={filteredArticles}
+        data={showFeatured && allCollapsed ? [] : filteredArticles}
         keyExtractor={(a) => a.id}
         renderItem={renderArticle}
         ListHeaderComponent={ListHeader}
@@ -521,21 +535,34 @@ export function LibraryScreen() {
           <View style={[styles.separator, { backgroundColor: colors.border }]} />
         )}
         ListEmptyComponent={
-          <View style={styles.emptyWrap}>
-            <IconFileText size={48} color={colors.textMuted} strokeWidth={1} />
-            <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
-              {statusFilter === 'archived'
-                ? 'Nenhum artigo arquivado'
-                : hasActiveFilters
-                  ? 'Nenhum artigo encontrado'
-                  : 'Nenhum artigo ainda'}
-            </Text>
-            {statusFilter === 'all' && !selectedTag && !searchQuery && (
-              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                Toque no + para salvar seu primeiro artigo
+          showFeatured && allCollapsed ? (
+            <TouchableOpacity
+              style={styles.expandBtn}
+              onPress={() => setAllCollapsed(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.expandBtnText, { color: accent }]}>
+                Mostrar {filteredArticles.length} {filteredArticles.length === 1 ? 'artigo' : 'artigos'}
               </Text>
-            )}
-          </View>
+              <IconChevronDown size={16} color={accent} strokeWidth={2} />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.emptyWrap}>
+              <IconFileText size={48} color={colors.textMuted} strokeWidth={1} />
+              <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
+                {statusFilter === 'archived'
+                  ? 'Nenhum artigo arquivado'
+                  : hasActiveFilters
+                    ? 'Nenhum artigo encontrado'
+                    : 'Nenhum artigo ainda'}
+              </Text>
+              {statusFilter === 'all' && !selectedTag && !searchQuery && (
+                <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+                  Toque no + para salvar seu primeiro artigo
+                </Text>
+              )}
+            </View>
+          )
         }
       />
 
@@ -789,23 +816,17 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3 },
   dotActive: { width: 18 },
 
-  // ── Recent cards row ────────────────────────────────────────────────────────
-  recentRow: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
-    paddingBottom: spacing.xs,
+  // ── Next-read card (compact) ────────────────────────────────────────────────
+  nextCard: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    marginHorizontal: spacing.lg, padding: spacing.sm,
+    borderRadius: radius.lg, borderWidth: 1,
   },
-  recentCard: {
-    width: 148,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-  },
-  recentImage: { width: '100%', height: 96 },
-  recentPlaceholder: { justifyContent: 'center', alignItems: 'center' },
-  recentBody: { padding: spacing.sm, minHeight: 72 },
-  recentDot: { width: 6, height: 6, borderRadius: 3, marginBottom: 4 },
-  recentTitle: { fontSize: 13, fontWeight: '600', lineHeight: 18 },
-  recentTime: { fontSize: 11, marginTop: 4 },
+  nextThumb: { width: 48, height: 48, borderRadius: radius.sm },
+  nextThumbPlaceholder: { justifyContent: 'center', alignItems: 'center' },
+  nextBody: { flex: 1 },
+  nextTitle: { fontSize: 14, fontWeight: '600', lineHeight: 18 },
+  nextMeta: { fontSize: 12, marginTop: 2 },
 
   // ── Section labels ──────────────────────────────────────────────────────────
   sectionLabel: {
@@ -815,6 +836,15 @@ const styles = StyleSheet.create({
   },
   sectionRow: { marginTop: spacing.lg },
   sectionDivider: { height: 1, marginHorizontal: spacing.lg, marginTop: spacing.xl, marginBottom: spacing.lg },
+  allHeaderRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingRight: spacing.lg, marginBottom: spacing.sm,
+  },
+  expandBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
+    paddingVertical: spacing.md,
+  },
+  expandBtnText: { fontSize: 14, fontWeight: '600' },
 
   // ── Article list items ──────────────────────────────────────────────────────
   separator: { height: 0.5, marginHorizontal: spacing.lg },
@@ -832,6 +862,7 @@ const styles = StyleSheet.create({
   articleBody: { flex: 1 },
   articleTitle: { ...typography.title, marginBottom: 4 },
   metaText: { ...typography.caption },
+  dateText: { fontSize: 11, marginTop: 2 },
   favoriteBtn: { marginLeft: spacing.md, padding: 4 },
   offlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   offlineText: { fontSize: 11, fontWeight: '500' },

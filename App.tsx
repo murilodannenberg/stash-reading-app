@@ -12,6 +12,9 @@ import { useShareStore } from './src/stores/shareStore';
 import { getSharedUrl, clearSharedUrl, extractUrl } from './src/services/shareIntent';
 import { Colors } from './src/theme/tokens';
 import { AppLogo } from './src/components/AppLogo';
+import { installGlobalFont } from './src/utils/globalFont';
+
+installGlobalFont();
 
 function SplashLogo() {
   const logoScale = useRef(new Animated.Value(0.6)).current;
