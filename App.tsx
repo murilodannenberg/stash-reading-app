@@ -10,6 +10,7 @@ import { AppNavigator } from './src/navigation';
 import { useAppThemeStore } from './src/stores/appThemeStore';
 import { useShareStore } from './src/stores/shareStore';
 import { getSharedUrl, clearSharedUrl, extractUrl } from './src/services/shareIntent';
+import { useFonts, Lora_600SemiBold, Lora_700Bold } from '@expo-google-fonts/lora';
 import { Colors } from './src/theme/tokens';
 import { AppLogo } from './src/components/AppLogo';
 import { installGlobalFont } from './src/utils/globalFont';
@@ -64,6 +65,7 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [minElapsed, setMinElapsed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fontsLoaded] = useFonts({ Lora_600SemiBold, Lora_700Bold });
 
   const hydrateTheme = useAppThemeStore((s) => s._hydrate);
   const setPendingUrl = useShareStore((s) => s.setPendingUrl);
@@ -119,7 +121,7 @@ export default function App() {
     );
   }
 
-  if (!ready || !minElapsed) {
+  if (!ready || !minElapsed || !fontsLoaded) {
     return <SplashLogo />;
   }
 
@@ -136,8 +138,8 @@ const styles = StyleSheet.create({
     flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.papel,
   },
   logoName: {
-    fontSize: 24, fontWeight: '700', color: Colors.tinta,
-    fontFamily: 'Georgia', letterSpacing: -0.5, marginTop: 18,
+    fontSize: 26, color: Colors.tinta,
+    fontFamily: 'Lora_700Bold', letterSpacing: -0.5, marginTop: 18,
   },
   logoLine: {
     width: 40, height: 3, borderRadius: 2,

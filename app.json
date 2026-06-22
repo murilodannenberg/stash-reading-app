@@ -26,7 +26,8 @@
       "expo-sqlite",
       "expo-document-picker",
       "expo-web-browser",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-font"
     ],
     "extra": {
       "eas": {

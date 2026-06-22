@@ -72,7 +72,7 @@ function MainTabs() {
         headerShown: true,
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.text,
-        headerTitleStyle: { fontFamily: appFontFamily ?? 'Georgia', fontWeight: '700', fontSize: 20 },
+        headerTitleStyle: { fontFamily: appFontFamily ?? 'Lora_700Bold', fontWeight: '700', fontSize: 20 },
         headerShadowVisible: false,
       })}
     >
@@ -133,7 +133,7 @@ export function AppNavigator() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
           headerTintColor: colors.text,
-          headerTitleStyle: { fontFamily: appFontFamily ?? 'Georgia', fontWeight: '700', fontSize: 20 },
+          headerTitleStyle: { fontFamily: appFontFamily ?? 'Lora_700Bold', fontWeight: '700', fontSize: 20 },
           headerBackTitle: 'Voltar',
           headerShadowVisible: false,
           animation: 'slide_from_right',
