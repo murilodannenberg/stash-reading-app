@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
-  View, Text, StyleSheet, Image, useWindowDimensions,
+  View, Text, StyleSheet,
   ActivityIndicator, TouchableOpacity, Modal, Share,
   Alert, TextInput, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
@@ -57,6 +57,9 @@ function buildArticleHtml(article: Article, prefs: ReadingPreferences, accent: s
   ].filter(Boolean).join(' · ');
 
   const markerColors = MARKER_COLORS.map((m) => m.color);
+  const coverHtml = article.cover_image_path
+    ? `<img class="cover" src="${article.cover_image_path}" />`
+    : '';
 
   return `<!DOCTYPE html>
 <html><head>
@@ -84,7 +87,7 @@ h3{font-size:var(--fs-3);font-weight:600;margin:16px 0 6px}
 h4,h5,h6{font-size:var(--fs);font-weight:600;margin:12px 0 4px}
 a{color:var(--ac);text-decoration:underline}
 img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:6px;cursor:pointer}
-.cover{width:100%;height:auto;max-height:240px;object-fit:cover;border-radius:10px;margin:0 0 16px;display:block;}
+.cover{width:100%;height:auto;border-radius:12px;margin:0 0 18px;display:block;}
 figure{margin:12px 0}
 figcaption{font-size:var(--fs-s);opacity:.6;margin-top:4px}
 blockquote{border-left:3px solid currentColor;opacity:.7;padding-left:14px;margin:12px 0;font-style:italic}
@@ -112,6 +115,7 @@ li{margin-bottom:4px}
   margin-left:4px;font-size:18px;color:#fff;font-weight:300;line-height:1;}
 </style>
 </head><body>
+${coverHtml}
 <h1 class="title">${escHtml(article.title)}</h1>
 ${meta ? `<p class="meta">${meta}</p>` : ''}
 <hr>
@@ -208,7 +212,6 @@ export function ReaderScreen() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigation = useNavigation<any>();
   const { articleId } = route.params;
-  const { width: screenW, height: screenH } = useWindowDimensions();
 
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
@@ -220,7 +223,6 @@ export function ReaderScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editText, setEditText] = useState('');
   const [saving, setSaving] = useState(false);
-  const [coverAspect, setCoverAspect] = useState<number | null>(null);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const webViewRef = useRef<any>(null);
@@ -240,23 +242,25 @@ export function ReaderScreen() {
       if (a) {
         setIsFavorite(a.is_favorite);
         if (!a.is_read) markAsRead(articleId, true);
-        if (a.cover_image_path) {
-          Image.getSize(
-            a.cover_image_path,
-            (w, h) => { if (w > 0 && h > 0) setCoverAspect(w / h); },
-            () => setCoverAspect(16 / 9),
-          );
-        }
       }
     });
     loadArticleHighlights(articleId);
   }, [articleId, loadArticleHighlights]);
 
-  const articleSource = useMemo(
-    () => (article ? { html: buildArticleHtml(article, prefs, accent) } : null),
+  const articleSource = useMemo(() => {
+    if (!article) return null;
+    const html = buildArticleHtml(article, prefs, accent);
+    // When there's a local cover, give the WebView a file:// base origin so the
+    // <img class="cover"> can read it (needs allowFileAccessFromFileURLs). The cover
+    // then lives in the DOM: it scrolls with the text and sizes to its natural ratio.
+    const cover = article.cover_image_path;
+    if (cover) {
+      const baseUrl = cover.substring(0, cover.lastIndexOf('/') + 1);
+      return { html, baseUrl };
+    }
+    return { html };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [article],
-  );
+  }, [article]);
 
   useEffect(() => {
     if (!webViewReady || !webViewRef.current) return;
@@ -463,22 +467,6 @@ export function ReaderScreen() {
         <View style={[styles.progressBar, { width: `${readProgress * 100}%`, backgroundColor: accent }]} />
       </View>
 
-      {/* Cover image — native render adapts to any aspect ratio (square/vertical/horizontal) */}
-      {article?.cover_image_path != null && (() => {
-        const natural = coverAspect ? screenW / coverAspect : screenW * 0.5;
-        const coverH = Math.max(150, Math.min(natural, screenH * 0.5));
-        return (
-          <View style={[styles.coverWrap, { height: coverH }]}>
-            <Image
-              source={{ uri: article.cover_image_path }}
-              style={styles.coverImg}
-              resizeMode="cover"
-            />
-            <View style={[styles.coverScrim, { backgroundColor: prefs.backgroundColor }]} />
-          </View>
-        );
-      })()}
-
       {/* @ts-ignore */}
       <WebView
         ref={webViewRef}
@@ -491,6 +479,9 @@ export function ReaderScreen() {
         showsVerticalScrollIndicator={false}
         originWhitelist={['*']}
         mixedContentMode="always"
+        allowFileAccess
+        allowFileAccessFromFileURLs
+        allowUniversalAccessFromFileURLs
       />
 
       {savedFeedback && (
@@ -671,9 +662,6 @@ const styles = StyleSheet.create({
   backLink: { fontSize: 16, fontWeight: '600' },
   progressTrack: { height: 2, backgroundColor: 'transparent' },
   progressBar: { height: 2, borderRadius: 1 },
-  coverWrap: { width: '100%', position: 'relative', backgroundColor: 'rgba(0,0,0,0.04)' },
-  coverImg: { width: '100%', height: '100%' },
-  coverScrim: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 40, opacity: 0.6 },
   toast: {
     position: 'absolute',
     top: 12,

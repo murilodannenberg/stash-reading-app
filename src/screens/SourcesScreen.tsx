@@ -3,12 +3,16 @@ import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { IconNews, IconPencil, IconX, IconCheck } from '@tabler/icons-react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { IconNews, IconPencil, IconX, IconCheck, IconChevronRight } from '@tabler/icons-react-native';
 import { useArticleStore } from '../stores/articleStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { useSourceNamesStore } from '../stores/sourceNamesStore';
+import { RootStackParamList } from '../types';
 import { spacing, radius, typography } from '../theme/colors';
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 type SourceEntry = {
   domain: string;
@@ -27,6 +31,7 @@ function extractDomain(url: string | null): string {
 }
 
 export function SourcesScreen() {
+  const navigation = useNavigation<Nav>();
   const { articles, loadArticles } = useArticleStore();
   const { prefs: appTheme } = useAppThemeStore();
   const colors = getHomeColors(appTheme.homeTheme);
@@ -73,7 +78,11 @@ export function SourcesScreen() {
     const hasCustomName = Boolean(names[item.domain]);
 
     return (
-      <View style={[styles.row, { backgroundColor: colors.background }]}>
+      <TouchableOpacity
+        style={[styles.row, { backgroundColor: colors.background }]}
+        activeOpacity={0.6}
+        onPress={() => navigation.navigate('SourceDetail', { domain: item.domain, title: displayName })}
+      >
         <View style={[styles.rank, { backgroundColor: accent + '14' }]}>
           <Text style={[styles.rankText, { color: accent }]}>{index + 1}</Text>
         </View>
@@ -110,7 +119,8 @@ export function SourcesScreen() {
         >
           <IconPencil size={14} color={colors.textMuted} strokeWidth={1.75} />
         </TouchableOpacity>
-      </View>
+        <IconChevronRight size={16} color={colors.textMuted} strokeWidth={1.75} />
+      </TouchableOpacity>
     );
   };
 

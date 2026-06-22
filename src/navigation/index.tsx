@@ -9,6 +9,7 @@ import {
 
 import { LibraryScreen } from '../screens/LibraryScreen';
 import { SourcesScreen } from '../screens/SourcesScreen';
+import { SourceDetailScreen } from '../screens/SourceDetailScreen';
 import { ShelvesScreen } from '../screens/ShelvesScreen';
 import { TagsScreen } from '../screens/TagsScreen';
 import { HighlightsScreen } from '../screens/HighlightsScreen';
@@ -149,6 +150,13 @@ export function AppNavigator() {
           component={FolderDetailScreen}
           options={({ route }: { route: { params: { folderName: string } } }) => ({
             title: route.params.folderName,
+          })}
+        />
+        <Stack.Screen
+          name="SourceDetail"
+          component={SourceDetailScreen}
+          options={({ route }: { route: { params: { title: string } } }) => ({
+            title: route.params.title,
           })}
         />
         <Stack.Screen

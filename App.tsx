@@ -55,8 +55,11 @@ function SplashLogo() {
   );
 }
 
+const MIN_SPLASH_MS = 2200;
+
 export default function App() {
   const [ready, setReady] = useState(false);
+  const [minElapsed, setMinElapsed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hydrateTheme = useAppThemeStore((s) => s._hydrate);
@@ -74,6 +77,10 @@ export default function App() {
       }
     }
     init();
+    // Keep the splash on screen long enough for the intro animation to play,
+    // even when DB init finishes almost instantly.
+    const t = setTimeout(() => setMinElapsed(true), MIN_SPLASH_MS);
+    return () => clearTimeout(t);
   }, [hydrateTheme]);
 
   // Detecta URLs compartilhadas após o banco estar pronto
@@ -109,7 +116,7 @@ export default function App() {
     );
   }
 
-  if (!ready) {
+  if (!ready || !minElapsed) {
     return <SplashLogo />;
   }
 
