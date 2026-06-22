@@ -40,6 +40,17 @@ const svgLegacyRound = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108
   ${pageMark()}
 </svg>`;
 
+// Splash logo: matches the in-app AppLogo (papel page on papel bg with âmbar
+// accents) so the native splash flows seamlessly into the JS intro animation.
+const svgSplashLogo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <path d="M30,16 L69,16 L82,29 L82,92 L30,92 Z" fill="${PAPEL}" stroke="#D5CFC8" stroke-width="1.5"/>
+  <path d="M69,16 L82,29 L69,29 Z" fill="${AMBAR}" opacity="0.9"/>
+  <line x1="39" y1="40" x2="73" y2="40" stroke="${AMBAR}" stroke-width="3.2" stroke-linecap="round"/>
+  <line x1="39" y1="52" x2="73" y2="52" stroke="${CINZA}" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="39" y1="62" x2="73" y2="62" stroke="${CINZA}" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="39" y1="72" x2="62" y2="72" stroke="${CINZA}" stroke-width="2.4" stroke-linecap="round"/>
+</svg>`;
+
 function render(svg, size) {
   const r = new Resvg(svg, { fitTo: { mode: 'width', value: size } });
   return r.render().asPng();
@@ -92,7 +103,16 @@ const svgLegacyFlat = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 
 </svg>`;
 writeFileSync(join(assets, 'icon.png'), render(svgLegacyFlat, 1024));
 writeFileSync(join(assets, 'adaptive-icon.png'), render(svgForeground, 1024));
-writeFileSync(join(assets, 'splash.png'), render(svgLegacyFlat, 1024));
+writeFileSync(join(assets, 'splash.png'), render(svgSplashLogo, 1024));
 console.log('assets: icon.png, adaptive-icon.png, splash.png (1024px)');
+
+// Native splash logo (papel page) per density — shown on the papel background.
+const SPLASH = { mdpi: 288, hdpi: 432, xhdpi: 576, xxhdpi: 864, xxxhdpi: 1152 };
+for (const [d, size] of Object.entries(SPLASH)) {
+  const dir = join(RES, `drawable-${d}`);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'splashscreen_logo.png'), render(svgSplashLogo, size));
+  console.log(`drawable-${d}: splashscreen_logo ${size}px`);
+}
 
 console.log('Done.');

@@ -2,7 +2,7 @@ import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import {
   View, Text, FlatList, ScrollView, StyleSheet, TouchableOpacity,
   TextInput, Modal, Pressable, Share, Image, useWindowDimensions,
-  NativeSyntheticEvent, NativeScrollEvent, Alert,
+  NativeSyntheticEvent, NativeScrollEvent, Alert, ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -94,6 +94,7 @@ export function LibraryScreen() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [tagPickerArticleId, setTagPickerArticleId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const { width: screenW } = useWindowDimensions();
   useEffect(() => { _hydrate(); }, [_hydrate]);
 
@@ -192,6 +193,7 @@ export function LibraryScreen() {
       Alert.alert('Disponível offline', 'Este artigo já está salvo para leitura offline.');
       return;
     }
+    setDownloadingId(article.id);
     try {
       const count = await downloadArticle(article.id);
       Alert.alert(
@@ -202,6 +204,8 @@ export function LibraryScreen() {
       );
     } catch {
       Alert.alert('Erro', 'Não foi possível baixar o artigo completo.');
+    } finally {
+      setDownloadingId(null);
     }
   }, [downloadArticle]);
 
@@ -233,6 +237,12 @@ export function LibraryScreen() {
             {!article.is_read && (
               <View style={[styles.unreadBadge, { backgroundColor: accent }]}>
                 <Text style={styles.unreadBadgeText}>Novo</Text>
+              </View>
+            )}
+            {article.is_downloaded && (
+              <View style={styles.metaBadge}>
+                <IconCircleCheckFilled size={12} color={accent} />
+                <Text style={[styles.metaBadgeText, { color: colors.textMuted }]}>Offline</Text>
               </View>
             )}
             {article.reading_time_min != null && (
@@ -342,6 +352,12 @@ export function LibraryScreen() {
               item.reading_time_min != null ? `${item.reading_time_min} min` : null,
             ].filter(Boolean).join(' · ')}
           </Text>
+        )}
+        {item.is_downloaded && (
+          <View style={styles.offlineRow}>
+            <IconCircleCheckFilled size={12} color={accent} />
+            <Text style={[styles.offlineText, { color: colors.textMuted }]}>Offline</Text>
+          </View>
         )}
       </View>
       <TouchableOpacity
@@ -510,6 +526,14 @@ export function LibraryScreen() {
           </View>
         }
       />
+
+      {/* Download progress banner */}
+      {downloadingId != null && (
+        <View style={[styles.downloadingBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <ActivityIndicator size="small" color={accent} />
+          <Text style={[styles.downloadingText, { color: colors.text }]}>Baixando para offline…</Text>
+        </View>
+      )}
 
       {/* Article action sheet */}
       <ActionSheet
@@ -790,6 +814,19 @@ const styles = StyleSheet.create({
   articleTitle: { ...typography.title, marginBottom: 4 },
   metaText: { ...typography.caption },
   favoriteBtn: { marginLeft: spacing.md, padding: 4 },
+  offlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  offlineText: { fontSize: 11, fontWeight: '500' },
+
+  // ── Download progress banner ─────────────────────────────────────────────────
+  downloadingBanner: {
+    position: 'absolute', bottom: spacing.lg, alignSelf: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
+    borderRadius: radius.full, borderWidth: 0.5,
+    elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15, shadowRadius: 6,
+  },
+  downloadingText: { fontSize: 14, fontWeight: '500' },
 
   // ── Empty state ─────────────────────────────────────────────────────────────
   emptyWrap: { alignItems: 'center', marginTop: 80 },
