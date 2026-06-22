@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
-  View, Text, StyleSheet, Image, Animated, useWindowDimensions,
+  View, Text, StyleSheet,
   ActivityIndicator, TouchableOpacity, Modal, Share,
   Alert, TextInput, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
@@ -59,6 +59,9 @@ function buildArticleHtml(article: Article, prefs: ReadingPreferences, accent: s
   ].filter(Boolean).join(' · ');
 
   const markerColors = MARKER_COLORS.map((m) => m.color);
+  const coverHtml = article.cover_image_path
+    ? `<img class="cover" src="${article.cover_image_path}" />`
+    : '';
 
   return `<!DOCTYPE html>
 <html><head>
@@ -86,6 +89,7 @@ h3{font-size:var(--fs-3);font-weight:600;margin:16px 0 6px}
 h4,h5,h6{font-size:var(--fs);font-weight:600;margin:12px 0 4px}
 a{color:var(--ac);text-decoration:underline}
 img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:6px;cursor:pointer}
+.cover{width:100%;height:auto;border-radius:12px;margin:0 0 18px;cursor:default}
 figure{margin:12px 0}
 figcaption{font-size:var(--fs-s);opacity:.6;margin-top:4px}
 blockquote{border-left:3px solid currentColor;opacity:.7;padding-left:14px;margin:12px 0;font-style:italic}
@@ -113,6 +117,7 @@ li{margin-bottom:4px}
   margin-left:4px;font-size:18px;color:#fff;font-weight:300;line-height:1;}
 </style>
 </head><body>
+${coverHtml}
 <h1 class="title">${escHtml(article.title)}</h1>
 ${meta ? `<p class="meta">${meta}</p>` : ''}
 <hr>
@@ -162,8 +167,9 @@ ${content}
   // Scroll progress
   window.addEventListener('scroll',function(){
     var dh=document.documentElement.scrollHeight-window.innerHeight;
-    var p=dh>0?Math.min(1,Math.max(0,window.scrollY/dh)):0;
-    window.ReactNativeWebView.postMessage(JSON.stringify({type:'scroll',progress:p,y:window.scrollY}));
+    if(dh<=0)return;
+    var p=Math.min(1,Math.max(0,window.scrollY/dh));
+    window.ReactNativeWebView.postMessage(JSON.stringify({type:'scroll',progress:p}));
   },{passive:true});
 
   // Fix lazy-loaded images
@@ -208,7 +214,6 @@ export function ReaderScreen() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigation = useNavigation<any>();
   const { articleId } = route.params;
-  const { width: screenW } = useWindowDimensions();
 
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
@@ -221,11 +226,9 @@ export function ReaderScreen() {
   const [editText, setEditText] = useState('');
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [coverAspect, setCoverAspect] = useState<number | null>(null);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const webViewRef = useRef<any>(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
 
   const { prefs, setFontSize, setFontFamily, setTheme, setLineHeight, _hydrate } = useReadingPrefsStore();
   const accent = useAppThemeStore((s) => s.prefs.accentColor);
@@ -242,36 +245,17 @@ export function ReaderScreen() {
       if (a) {
         setIsFavorite(a.is_favorite);
         if (!a.is_read) markAsRead(articleId, true);
-        if (a.cover_image_path) {
-          Image.getSize(
-            a.cover_image_path,
-            (w, h) => setCoverAspect(w > 0 && h > 0 ? w / h : 1.6),
-            () => setCoverAspect(1.6),
-          );
-        }
       }
     });
     loadArticleHighlights(articleId);
   }, [articleId, loadArticleHighlights]);
 
-  // Cover is rendered natively (reliable on all devices) at its true aspect ratio —
-  // no crop. Height in dp from the real ratio; the WebView gets matching top padding
-  // and the cover translates with scroll so it moves away like normal content.
-  const coverHeight = article?.cover_image_path && coverAspect ? Math.round(screenW / coverAspect) : 0;
-
-  useEffect(() => {
-    if (!webViewReady || coverHeight <= 0) return;
-    webViewRef.current?.injectJavaScript(
-      `document.body.style.paddingTop='${coverHeight + 16}px';true;`,
-    );
-  }, [webViewReady, coverHeight]);
-
   const articleSource = useMemo(() => {
     if (!article) return null;
     const html = buildArticleHtml(article, prefs, accent);
-    // Downloaded body images are local file:// — give the WebView a file:// base
-    // origin so allowFileAccessFromFileURLs can read them.
-    if (article.is_downloaded) {
+    // Local resources (cover + downloaded body images) are file:// — give the WebView
+    // a file:// base origin so allowFileAccessFromFileURLs can read them.
+    if (article.cover_image_path || article.is_downloaded) {
       const docUri = Paths.document?.uri;
       if (docUri) return { html, baseUrl: docUri };
     }
@@ -408,10 +392,9 @@ export function ReaderScreen() {
 
   const handleMessage = useCallback(async (event: WebViewMessageEvent) => {
     try {
-      const data = JSON.parse(event.nativeEvent.data) as { type: string; text?: string; color?: string; progress?: number; y?: number; url?: string };
+      const data = JSON.parse(event.nativeEvent.data) as { type: string; text?: string; color?: string; progress?: number; url?: string };
       if (data.type === 'scroll' && data.progress != null) {
         setReadProgress(data.progress);
-        if (data.y != null) scrollY.setValue(data.y);
         return;
       }
       if (data.type === 'save_image' && data.url) {
@@ -527,6 +510,11 @@ export function ReaderScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: prefs.backgroundColor }]}>
+      {/* Progress bar */}
+      <View style={styles.progressTrack} pointerEvents="none">
+        <View style={[styles.progressBar, { width: `${readProgress * 100}%`, backgroundColor: accent }]} />
+      </View>
+
       {/* @ts-ignore */}
       <WebView
         ref={webViewRef}
@@ -534,9 +522,6 @@ export function ReaderScreen() {
         style={styles.webView}
         onLoad={() => setWebViewReady(true)}
         onMessage={handleMessage}
-        onScroll={(e: { nativeEvent: { contentOffset: { y: number } } }) =>
-          scrollY.setValue(e.nativeEvent.contentOffset.y)}
-        scrollEventThrottle={16}
         javaScriptEnabled
         scrollEnabled
         showsVerticalScrollIndicator={false}
@@ -546,35 +531,6 @@ export function ReaderScreen() {
         allowFileAccessFromFileURLs
         allowUniversalAccessFromFileURLs
       />
-
-      {/* Cover — native render at the image's true aspect ratio (no crop), translated
-          with scroll so it moves away naturally instead of staying pinned. */}
-      {coverHeight > 0 && article.cover_image_path && (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.coverWrap,
-            {
-              height: coverHeight,
-              transform: [{
-                translateY: scrollY.interpolate({
-                  inputRange: [0, coverHeight],
-                  outputRange: [0, -coverHeight],
-                  extrapolateLeft: 'clamp',
-                  extrapolateRight: 'clamp',
-                }),
-              }],
-            },
-          ]}
-        >
-          <Image source={{ uri: article.cover_image_path }} style={styles.coverImg} resizeMode="cover" />
-        </Animated.View>
-      )}
-
-      {/* Progress bar (on top of the cover) */}
-      <View style={styles.progressTrack} pointerEvents="none">
-        <View style={[styles.progressBar, { width: `${readProgress * 100}%`, backgroundColor: accent }]} />
-      </View>
 
       {savedFeedback && (
         <View style={[styles.toast, { backgroundColor: accent }]}>
@@ -754,8 +710,6 @@ const styles = StyleSheet.create({
   backLink: { fontSize: 16, fontWeight: '600' },
   progressTrack: { position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: 'transparent', zIndex: 10 },
   progressBar: { height: 2, borderRadius: 1 },
-  coverWrap: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden' },
-  coverImg: { width: '100%', height: '100%' },
   toast: {
     position: 'absolute',
     top: 12,
