@@ -18,6 +18,7 @@ export interface Article {
   title: string;
   url: string | null;
   content_html: string | null;
+  content_html_local: string | null;
   content_text: string | null;
   author: string | null;
   published_at: string | null;

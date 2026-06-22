@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Article } from '../types';
 import * as db from '../database';
-import { downloadArticleImages } from '../services/imageStorage';
+import { downloadArticleImages, deleteArticleImages, clearAllArticleImages } from '../services/imageStorage';
 
 interface ArticleState {
   articles: Article[];
@@ -22,6 +22,8 @@ interface ArticleState {
   markAsRead: (id: string, isRead: boolean) => Promise<void>;
   toggleFavorite: (id: string) => Promise<void>;
   downloadArticle: (id: string) => Promise<number>;
+  removeDownload: (id: string) => Promise<void>;
+  clearAllDownloads: () => Promise<void>;
   searchArticles: (query: string) => Promise<Article[]>;
   // Trash list (separate from main articles list)
   trashArticles: Article[];
@@ -130,10 +132,30 @@ export const useArticleStore = create<ArticleState>((set, get) => ({
     await db.setArticleDownloaded(id, html);
     set((state) => ({
       articles: state.articles.map((a) =>
-        a.id === id ? { ...a, content_html: html, is_downloaded: true } : a
+        a.id === id ? { ...a, content_html_local: html, is_downloaded: true } : a
       ),
     }));
     return count;
+  },
+
+  removeDownload: async (id) => {
+    await db.clearArticleDownload(id);
+    await deleteArticleImages(id);
+    set((state) => ({
+      articles: state.articles.map((a) =>
+        a.id === id ? { ...a, content_html_local: null, is_downloaded: false } : a
+      ),
+    }));
+  },
+
+  clearAllDownloads: async () => {
+    await db.clearAllArticleDownloads();
+    await clearAllArticleImages();
+    set((state) => ({
+      articles: state.articles.map((a) =>
+        a.is_downloaded ? { ...a, content_html_local: null, is_downloaded: false } : a
+      ),
+    }));
   },
 
   searchArticles: async (query) => {

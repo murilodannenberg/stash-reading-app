@@ -1,12 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { IconCheck, IconShieldCheck, IconBrandGithub, IconHeart, IconTags, IconChevronRight, IconDatabaseExport } from '@tabler/icons-react-native';
+import { IconCheck, IconShieldCheck, IconBrandGithub, IconHeart, IconTags, IconChevronRight, IconDatabaseExport, IconCloudDownload, IconTrash } from '@tabler/icons-react-native';
 import { AppLogo } from '../components/AppLogo';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
+import { useArticleStore } from '../stores/articleStore';
+import { getDownloadedCount } from '../database';
 import {
   HOME_THEMES, HomeThemeKey,
   spacing, radius, typography,
@@ -21,8 +23,34 @@ export function SettingsScreen() {
   const colors = getHomeColors(prefs.homeTheme);
   const accent = prefs.accentColor;
   const navigation = useNavigation<Nav>();
+  const { clearAllDownloads } = useArticleStore();
+  const [downloadedCount, setDownloadedCount] = useState(0);
 
   useEffect(() => { _hydrate(); }, [_hydrate]);
+
+  const refreshCount = useCallback(() => {
+    getDownloadedCount().then(setDownloadedCount).catch(() => {});
+  }, []);
+  useFocusEffect(refreshCount);
+
+  const handleClearDownloads = useCallback(() => {
+    if (downloadedCount === 0) {
+      Alert.alert('Nada para limpar', 'Você não tem artigos baixados para offline.');
+      return;
+    }
+    Alert.alert(
+      'Excluir todos os downloads',
+      `As imagens offline de ${downloadedCount} ${downloadedCount === 1 ? 'artigo' : 'artigos'} serão removidas. O texto continua salvo.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => { await clearAllDownloads(); refreshCount(); },
+        },
+      ],
+    );
+  }, [downloadedCount, clearAllDownloads, refreshCount]);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -87,6 +115,32 @@ export function SettingsScreen() {
             Gerenciar tags
           </Text>
           <IconChevronRight size={16} color={colors.textMuted} strokeWidth={1.5} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Downloads */}
+      <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+        Downloads
+      </Text>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.menuRow}>
+          <IconCloudDownload size={18} color={colors.textMuted} strokeWidth={1.5} />
+          <Text style={[styles.menuText, { color: colors.textSecondary }]}>
+            {downloadedCount > 0
+              ? `${downloadedCount} ${downloadedCount === 1 ? 'artigo salvo' : 'artigos salvos'} para offline`
+              : 'Nenhum artigo baixado'}
+          </Text>
+        </View>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <TouchableOpacity
+          style={styles.menuRow}
+          onPress={handleClearDownloads}
+          activeOpacity={0.7}
+        >
+          <IconTrash size={18} color={downloadedCount > 0 ? Colors.ambar : colors.textMuted} strokeWidth={1.5} />
+          <Text style={[styles.menuText, { color: downloadedCount > 0 ? Colors.ambar : colors.textMuted }]}>
+            Excluir todos os downloads
+          </Text>
         </TouchableOpacity>
       </View>
 

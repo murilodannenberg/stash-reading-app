@@ -70,6 +70,16 @@ export async function deleteArticleImages(articleId: string): Promise<void> {
   }
 }
 
+/** Removes every downloaded article-image directory. */
+export async function clearAllArticleImages(): Promise<void> {
+  try {
+    const dir = new Directory(Paths.document, 'article_images');
+    if (dir.exists) dir.delete();
+  } catch {
+    // silently ignore
+  }
+}
+
 /**
  * Downloads a cover image and returns the local file URI.
  * Returns null if the download fails (non-blocking).

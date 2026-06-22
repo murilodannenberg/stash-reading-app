@@ -98,6 +98,7 @@ export async function createArticle(input: CreateArticleInput): Promise<Article>
   return {
     id, ...input,
     folder_id: input.folder_id ?? null,
+    content_html_local: null,
     is_read: false,
     is_favorite: false,
     is_archived: false,
@@ -200,12 +201,37 @@ export async function updateArticleContent(id: string, contentText: string, cont
   );
 }
 
-export async function setArticleDownloaded(id: string, contentHtml: string): Promise<void> {
+export async function setArticleDownloaded(id: string, localHtml: string): Promise<void> {
+  const db = getDatabase();
+  // Keep content_html (original, remote URLs) intact; store the offline copy separately.
+  await db.runAsync(
+    'UPDATE articles SET content_html_local = ?, is_downloaded = 1, updated_at = ? WHERE id = ?',
+    [localHtml, nowISO(), id],
+  );
+}
+
+export async function clearArticleDownload(id: string): Promise<void> {
   const db = getDatabase();
   await db.runAsync(
-    'UPDATE articles SET content_html = ?, is_downloaded = 1, updated_at = ? WHERE id = ?',
-    [contentHtml, nowISO(), id],
+    'UPDATE articles SET content_html_local = NULL, is_downloaded = 0, updated_at = ? WHERE id = ?',
+    [nowISO(), id],
   );
+}
+
+export async function clearAllArticleDownloads(): Promise<void> {
+  const db = getDatabase();
+  await db.runAsync(
+    'UPDATE articles SET content_html_local = NULL, is_downloaded = 0, updated_at = ? WHERE is_downloaded = 1',
+    [nowISO()],
+  );
+}
+
+export async function getDownloadedCount(): Promise<number> {
+  const db = getDatabase();
+  const row = await db.getFirstAsync<{ n: number }>(
+    'SELECT COUNT(*) AS n FROM articles WHERE is_downloaded = 1 AND deleted_at IS NULL',
+  );
+  return row?.n ?? 0;
 }
 
 export async function getArticlesByTag(tagId: string): Promise<Article[]> {

@@ -12,7 +12,7 @@ import {
   IconAdjustments, IconX, IconCircleX,
   IconStack2, IconEyeOff, IconCircleCheck,
   IconTrash, IconArchive, IconArchiveOff, IconClock, IconTag,
-  IconDownload, IconCircleCheckFilled,
+  IconDownload, IconCircleCheckFilled, IconCircleMinus,
 } from '@tabler/icons-react-native';
 import { ActionSheet } from '../components/ActionSheet';
 import { TagPicker } from '../components/TagPicker';
@@ -81,7 +81,8 @@ export function LibraryScreen() {
   const navigation = useNavigation<Nav>();
   const {
     articles, loadArticles, loadArticlesByTag, loadArchivedArticles,
-    trashArticle, archiveArticle, unarchiveArticle, toggleFavorite, downloadArticle,
+    trashArticle, archiveArticle, unarchiveArticle, toggleFavorite,
+    downloadArticle, removeDownload,
   } = useArticleStore();
   const { tags, loadTags } = useTagStore();
   const { prefs: appTheme, _hydrate } = useAppThemeStore();
@@ -208,6 +209,17 @@ export function LibraryScreen() {
       setDownloadingId(null);
     }
   }, [downloadArticle]);
+
+  const handleRemoveDownload = useCallback((article: Article) => {
+    Alert.alert(
+      'Remover download',
+      'O texto continua salvo. Apenas as imagens baixadas para offline serão removidas.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Remover', style: 'destructive', onPress: () => removeDownload(article.id) },
+      ],
+    );
+  }, [removeDownload]);
 
   // ─── Hero card ─────────────────────────────────────────────────────────────
 
@@ -546,11 +558,18 @@ export function LibraryScreen() {
             Icon: IconShare2,
             onPress: () => handleShareArticle(sheetArticle),
           },
-          {
-            label: sheetArticle.is_downloaded ? 'Disponível offline' : 'Baixar para offline',
-            Icon: sheetArticle.is_downloaded ? IconCircleCheckFilled : IconDownload,
-            onPress: () => handleDownloadArticle(sheetArticle),
-          },
+          sheetArticle.is_downloaded
+            ? {
+                label: 'Remover download',
+                style: 'destructive' as const,
+                Icon: IconCircleMinus,
+                onPress: () => handleRemoveDownload(sheetArticle),
+              }
+            : {
+                label: 'Baixar para offline',
+                Icon: IconDownload,
+                onPress: () => handleDownloadArticle(sheetArticle),
+              },
           {
             label: 'Gerenciar tags',
             Icon: IconTag,
