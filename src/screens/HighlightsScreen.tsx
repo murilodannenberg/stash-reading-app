@@ -1,14 +1,17 @@
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import {
   View, Text, SectionList, StyleSheet, TouchableOpacity, Alert,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { IconHighlight, IconTrash, IconX } from '@tabler/icons-react-native';
+import { IconHighlight, IconTrash, IconX, IconFileExport } from '@tabler/icons-react-native';
+import { writeAsStringAsync, cacheDirectory } from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useHighlightStore } from '../stores/highlightStore';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import { HighlightWithArticle } from '../database/repositories/highlights';
 import { spacing, radius, typography } from '../theme/colors';
+import { highlightsToMarkdown } from '../utils/markdown';
 import { RootStackParamList } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -42,6 +45,39 @@ export function HighlightsScreen() {
   const [colorFilter, setColorFilter] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => { loadAllHighlights(); }, [loadAllHighlights]));
+
+  const handleExport = useCallback(async () => {
+    if (allHighlights.length === 0) {
+      Alert.alert('Sem destaques', 'Você ainda não tem destaques para exportar.');
+      return;
+    }
+    try {
+      const md = highlightsToMarkdown(allHighlights);
+      const uri = `${cacheDirectory}destaques.md`;
+      await writeAsStringAsync(uri, md);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'text/markdown', dialogTitle: 'Exportar destaques' });
+      } else {
+        Alert.alert('Indisponível', 'Compartilhamento não está disponível neste aparelho.');
+      }
+    } catch {
+      Alert.alert('Erro', 'Não foi possível exportar os destaques.');
+    }
+  }, [allHighlights]);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={handleExport}
+          style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <IconFileExport size={22} color={accent} strokeWidth={1.75} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, handleExport, accent]);
 
   const handleDelete = useCallback((item: HighlightWithArticle) => {
     Alert.alert(

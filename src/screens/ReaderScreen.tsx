@@ -10,10 +10,12 @@ import {
   IconMinus, IconPlus, IconLineHeight, IconCheck,
   IconHighlight, IconBookmark, IconBookmarkFilled,
   IconPencil, IconX, IconDownload, IconCircleCheckFilled,
+  IconHeadphones, IconPlayerStopFilled,
 } from '@tabler/icons-react-native';
 import WebView from 'react-native-webview';
 import type { WebViewMessageEvent } from 'react-native-webview';
 import { File, Directory, Paths } from 'expo-file-system';
+import * as Speech from 'expo-speech';
 import { getArticleById, markAsRead, updateArticleContent } from '../database';
 import { Article, ReadingPreferences, RootStackParamList } from '../types';
 import { useReadingPrefsStore } from '../stores/readingPrefsStore';
@@ -24,6 +26,7 @@ import { useFileStore } from '../stores/fileStore';
 import { READING_THEMES, ReadingThemeKey, FONT_FAMILIES, FontFamilyKey } from '../theme/reading';
 import { palette, spacing, radius } from '../theme/colors';
 import { generateId } from '../utils/id';
+import { getReadingPosition, setReadingPosition } from '../utils/readingPosition';
 
 type Route = RouteProp<RootStackParamList, 'Reader'>;
 
@@ -209,6 +212,32 @@ ${content}
 </body></html>`;
 }
 
+// Split article text into chunks the device TTS engine can handle (Android caps an
+// utterance around 4000 chars), breaking at paragraph/sentence boundaries.
+function chunkForSpeech(text: string, max = 3800): string[] {
+  const paras = text.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+  const chunks: string[] = [];
+  let cur = '';
+  for (const p of paras) {
+    if (p.length > max) {
+      if (cur) { chunks.push(cur); cur = ''; }
+      const parts = p.match(/[^.!?]+[.!?]*\s*/g) ?? [p];
+      let sub = '';
+      for (const s of parts) {
+        if ((sub + s).length > max) { if (sub) chunks.push(sub); sub = s; }
+        else sub += s;
+      }
+      if (sub) chunks.push(sub);
+    } else if ((cur + '\n' + p).length > max && cur) {
+      chunks.push(cur); cur = p;
+    } else {
+      cur = cur ? `${cur}\n${p}` : p;
+    }
+  }
+  if (cur) chunks.push(cur);
+  return chunks;
+}
+
 export function ReaderScreen() {
   const route = useRoute<Route>();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -226,9 +255,12 @@ export function ReaderScreen() {
   const [editText, setEditText] = useState('');
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const webViewRef = useRef<any>(null);
+  const lastSaveRef = useRef(0);
+  const latestProgressRef = useRef(0);
 
   const { prefs, setFontSize, setFontFamily, setTheme, setLineHeight, _hydrate } = useReadingPrefsStore();
   const accent = useAppThemeStore((s) => s.prefs.accentColor);
@@ -249,6 +281,25 @@ export function ReaderScreen() {
     });
     loadArticleHighlights(articleId);
   }, [articleId, loadArticleHighlights]);
+
+  // Restore the saved reading position once the article is rendered.
+  useEffect(() => {
+    if (!webViewReady) return;
+    const pos = getReadingPosition(articleId);
+    if (pos <= 0.02 || pos >= 0.95) return;
+    const t = setTimeout(() => {
+      webViewRef.current?.injectJavaScript(
+        `(function(){var d=document.documentElement;window.scrollTo(0,${pos}*(d.scrollHeight-window.innerHeight));})();true;`,
+      );
+    }, 450);
+    return () => clearTimeout(t);
+  }, [webViewReady, articleId]);
+
+  // On leaving the article: persist the last position and stop any narration.
+  useEffect(() => () => {
+    setReadingPosition(articleId, latestProgressRef.current);
+    Speech.stop();
+  }, [articleId]);
 
   const articleSource = useMemo(() => {
     if (!article) return null;
@@ -326,6 +377,28 @@ export function ReaderScreen() {
     setIsFavorite((v) => !v);
   }, [article, toggleFavorite]);
 
+  const handleSpeak = useCallback(() => {
+    if (speaking) {
+      Speech.stop();
+      setSpeaking(false);
+      return;
+    }
+    const text = article?.content_text?.trim();
+    if (!text) {
+      Alert.alert('Sem texto', 'Este artigo não tem texto para ouvir.');
+      return;
+    }
+    const chunks = chunkForSpeech(text);
+    if (chunks.length === 0) return;
+    setSpeaking(true);
+    chunks.forEach((chunk, i) => {
+      Speech.speak(chunk, {
+        onDone: i === chunks.length - 1 ? () => setSpeaking(false) : undefined,
+        onError: () => setSpeaking(false),
+      });
+    });
+  }, [speaking, article]);
+
   const handleDownload = useCallback(async () => {
     if (!article || downloading) return;
     if (article.is_downloaded) {
@@ -395,6 +468,12 @@ export function ReaderScreen() {
       const data = JSON.parse(event.nativeEvent.data) as { type: string; text?: string; color?: string; progress?: number; url?: string };
       if (data.type === 'scroll' && data.progress != null) {
         setReadProgress(data.progress);
+        latestProgressRef.current = data.progress;
+        const now = Date.now();
+        if (now - lastSaveRef.current > 800) {
+          lastSaveRef.current = now;
+          setReadingPosition(articleId, data.progress);
+        }
         return;
       }
       if (data.type === 'save_image' && data.url) {
@@ -417,7 +496,7 @@ export function ReaderScreen() {
         setTimeout(() => setSavedFeedback(false), 2000);
       }
     } catch { /* ignore parse/save errors */ }
-  }, [article, addHighlight, handleSaveImage]);
+  }, [article, articleId, addHighlight, handleSaveImage]);
 
   const handleOpenEdit = useCallback(() => {
     if (!article) return;
@@ -447,6 +526,12 @@ export function ReaderScreen() {
     navigation.setOptions({
       headerRight: () => (
         <View style={headerStyles.row}>
+          <TouchableOpacity onPress={handleSpeak} style={headerStyles.btn}>
+            {speaking
+              ? <IconPlayerStopFilled size={20} color={accent} />
+              : <IconHeadphones size={20} color={accent} strokeWidth={1.75} />
+            }
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleShare} style={headerStyles.btn}>
             <IconShare2 size={20} color={accent} strokeWidth={1.75} />
           </TouchableOpacity>
@@ -486,7 +571,7 @@ export function ReaderScreen() {
         </View>
       ),
     });
-  }, [navigation, toggleSettings, handleShare, handleToggleFavorite, handleOpenEdit, handleDownload, downloading, article?.is_downloaded, accent, articleHighlights.length, isFavorite]);
+  }, [navigation, toggleSettings, handleShare, handleToggleFavorite, handleOpenEdit, handleDownload, handleSpeak, speaking, downloading, article?.is_downloaded, accent, articleHighlights.length, isFavorite]);
 
   if (loading) {
     return (
