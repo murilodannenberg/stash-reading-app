@@ -1,0 +1,8 @@
+# Files not needed for the native build — also avoids Windows file-locks
+# (editor/antivirus holding docs open) during the EAS upload tarball.
+BRIEFING.md
+CLAUDE.md
+README.md
+docs/
+scripts/
+*.log
