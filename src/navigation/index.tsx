@@ -3,21 +3,21 @@ import { NavigationContainer, createNavigationContainerRef } from '@react-naviga
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
-  IconBooks, IconBookmark, IconBookmarkFilled,
-  IconArchive, IconArchiveFilled, IconSettings, IconTags, IconFolder,
+  IconBooks, IconColumns3, IconColumns3Filled,
+  IconHighlight, IconSettings, IconNews,
 } from '@tabler/icons-react-native';
 
 import { LibraryScreen } from '../screens/LibraryScreen';
-import { FilesScreen } from '../screens/FilesScreen';
+import { SourcesScreen } from '../screens/SourcesScreen';
 import { ShelvesScreen } from '../screens/ShelvesScreen';
 import { TagsScreen } from '../screens/TagsScreen';
+import { HighlightsScreen } from '../screens/HighlightsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { ReaderScreen } from '../screens/ReaderScreen';
 import { FolderDetailScreen } from '../screens/FolderDetailScreen';
 import { AddArticleScreen } from '../screens/AddArticleScreen';
 import { TrashScreen } from '../screens/TrashScreen';
-import { HighlightsScreen } from '../screens/HighlightsScreen';
 import { BackupScreen } from '../screens/BackupScreen';
 
 import { RootStackParamList, MainTabParamList } from '../types';
@@ -32,11 +32,11 @@ export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 type TablerIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 
 const TAB_ICONS: Record<keyof MainTabParamList, { active: TablerIcon; inactive: TablerIcon }> = {
-  Library:  { active: IconBooks,           inactive: IconBooks },
-  Files:    { active: IconFolder,          inactive: IconFolder },
-  Shelves:  { active: IconArchiveFilled,   inactive: IconArchive },
-  Tags:     { active: IconTags,            inactive: IconTags },
-  Settings: { active: IconSettings,        inactive: IconSettings },
+  Library:    { active: IconBooks,           inactive: IconBooks },
+  Shelves:    { active: IconColumns3Filled,  inactive: IconColumns3 },
+  Highlights: { active: IconHighlight,       inactive: IconHighlight },
+  Sources:    { active: IconNews,            inactive: IconNews },
+  Settings:   { active: IconSettings,        inactive: IconSettings },
 };
 
 function MainTabs() {
@@ -78,19 +78,19 @@ function MainTabs() {
         options={{ title: 'Biblioteca', tabBarLabel: 'Biblioteca' }}
       />
       <Tab.Screen
-        name="Files"
-        component={FilesScreen}
-        options={{ title: 'Arquivos', tabBarLabel: 'Arquivos' }}
-      />
-      <Tab.Screen
         name="Shelves"
         component={ShelvesScreen}
         options={{ title: 'Estantes', tabBarLabel: 'Estantes' }}
       />
       <Tab.Screen
-        name="Tags"
-        component={TagsScreen}
-        options={{ title: 'Tags', tabBarLabel: 'Tags' }}
+        name="Highlights"
+        component={HighlightsScreen}
+        options={{ title: 'Destaques', tabBarLabel: 'Destaques' }}
+      />
+      <Tab.Screen
+        name="Sources"
+        component={SourcesScreen}
+        options={{ title: 'Fontes', tabBarLabel: 'Fontes' }}
       />
       <Tab.Screen
         name="Settings"
@@ -106,7 +106,6 @@ export function AppNavigator() {
   const colors = getHomeColors(prefs.homeTheme);
   const { pendingUrl, setPendingUrl } = useShareStore();
 
-  // Navega para AddArticle quando uma URL chega via share intent
   useEffect(() => {
     if (!pendingUrl) return;
     if (!navigationRef.isReady()) return;
@@ -118,7 +117,6 @@ export function AppNavigator() {
     <NavigationContainer
       ref={navigationRef}
       onReady={() => {
-        // Cobre o caso em que pendingUrl chegou antes da nav estar pronta
         const url = useShareStore.getState().pendingUrl;
         if (url) {
           navigationRef.navigate('AddArticle', { sharedUrl: url });
@@ -169,9 +167,9 @@ export function AppNavigator() {
           options={{ title: 'Lixeira' }}
         />
         <Stack.Screen
-          name="Highlights"
-          component={HighlightsScreen}
-          options={{ title: 'Destaques' }}
+          name="Tags"
+          component={TagsScreen}
+          options={{ title: 'Tags' }}
         />
         <Stack.Screen
           name="Backup"

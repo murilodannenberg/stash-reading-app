@@ -4,7 +4,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { IconCheck, IconShieldCheck, IconBrandGithub, IconHeart, IconHighlight, IconChevronRight, IconDatabaseExport } from '@tabler/icons-react-native';
+import { IconCheck, IconShieldCheck, IconBrandGithub, IconHeart, IconTags, IconChevronRight, IconDatabaseExport } from '@tabler/icons-react-native';
+import { AppLogo } from '../components/AppLogo';
 import { useAppThemeStore, getHomeColors } from '../stores/appThemeStore';
 import {
   HOME_THEMES, HomeThemeKey,
@@ -27,9 +28,7 @@ export function SettingsScreen() {
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Logo */}
       <View style={styles.logoSection}>
-        <View style={[styles.logoMark, { backgroundColor: accent + '18', borderColor: accent + '40' }]}>
-          <Text style={[styles.logoText, { color: accent }]}>S</Text>
-        </View>
+        <AppLogo size={72} />
         <Text style={[styles.appName, { color: colors.text }]}>Stash</Text>
         <Text style={[styles.appVersion, { color: colors.textMuted }]}>v1.0.0</Text>
       </View>
@@ -80,12 +79,12 @@ export function SettingsScreen() {
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <TouchableOpacity
           style={styles.menuRow}
-          onPress={() => navigation.navigate('Highlights')}
+          onPress={() => navigation.navigate('Tags')}
           activeOpacity={0.7}
         >
-          <IconHighlight size={18} color={colors.textMuted} strokeWidth={1.5} />
+          <IconTags size={18} color={colors.textMuted} strokeWidth={1.5} />
           <Text style={[styles.menuText, { color: colors.textSecondary }]}>
-            Meus destaques
+            Gerenciar tags
           </Text>
           <IconChevronRight size={16} color={colors.textMuted} strokeWidth={1.5} />
         </TouchableOpacity>
@@ -146,14 +145,7 @@ const styles = StyleSheet.create({
 
   // Logo
   logoSection: { alignItems: 'center', paddingTop: spacing['3xl'], paddingBottom: spacing.xl },
-  logoMark: {
-    width: 72, height: 72, borderRadius: radius.xl,
-    borderWidth: 1.5,
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  logoText: { fontSize: 34, fontWeight: '700', letterSpacing: -1 },
-  appName: { ...typography.title, marginBottom: 2 },
+  appName: { ...typography.title, marginBottom: 2, marginTop: spacing.md },
   appVersion: { ...typography.caption },
 
   // Sections

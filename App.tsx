@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
-import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, AppState } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, AppState, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -10,7 +10,50 @@ import { AppNavigator } from './src/navigation';
 import { useAppThemeStore } from './src/stores/appThemeStore';
 import { useShareStore } from './src/stores/shareStore';
 import { getSharedUrl, clearSharedUrl, extractUrl } from './src/services/shareIntent';
-import { palette } from './src/theme/colors';
+import { Colors } from './src/theme/tokens';
+import { AppLogo } from './src/components/AppLogo';
+
+function SplashLogo() {
+  const logoScale = useRef(new Animated.Value(0.6)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoLift = useRef(new Animated.Value(12)).current;
+  const nameOpacity = useRef(new Animated.Value(0)).current;
+  const nameLift = useRef(new Animated.Value(10)).current;
+  const lineScale = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
+        Animated.timing(logoOpacity, { toValue: 1, duration: 380, useNativeDriver: true }),
+        Animated.timing(logoLift, { toValue: 0, duration: 420, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(nameOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
+        Animated.timing(nameLift, { toValue: 0, duration: 360, useNativeDriver: true }),
+        Animated.spring(lineScale, { toValue: 1, tension: 60, friction: 9, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, [logoScale, logoOpacity, logoLift, nameOpacity, nameLift, lineScale]);
+
+  return (
+    <View style={styles.center}>
+      <Animated.View
+        style={{ opacity: logoOpacity, transform: [{ scale: logoScale }, { translateY: logoLift }] }}
+      >
+        <AppLogo size={92} />
+      </Animated.View>
+      <Animated.Text
+        style={[styles.logoName, { opacity: nameOpacity, transform: [{ translateY: nameLift }] }]}
+      >
+        Stash
+      </Animated.Text>
+      <Animated.View
+        style={[styles.logoLine, { transform: [{ scaleX: lineScale }] }]}
+      />
+    </View>
+  );
+}
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -67,12 +110,7 @@ export default function App() {
   }
 
   if (!ready) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={palette.primary} size="large" />
-        <Text style={styles.loadingText}>Carregando Stash…</Text>
-      </View>
-    );
+    return <SplashLogo />;
   }
 
   return (
@@ -85,9 +123,16 @@ export default function App() {
 
 const styles = StyleSheet.create({
   center: {
-    flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff',
+    flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.papel,
   },
-  loadingText: { marginTop: 12, color: '#6b7280', fontSize: 14 },
+  logoName: {
+    fontSize: 24, fontWeight: '700', color: Colors.tinta,
+    fontFamily: 'Georgia', letterSpacing: -0.5, marginTop: 18,
+  },
+  logoLine: {
+    width: 40, height: 3, borderRadius: 2,
+    backgroundColor: Colors.ambar, marginTop: 12,
+  },
   errorTitle: { fontSize: 18, fontWeight: '700', color: '#ef4444', marginBottom: 8 },
   errorText: { fontSize: 14, color: '#374151', textAlign: 'center', paddingHorizontal: 32 },
 });
