@@ -17,43 +17,66 @@ import { installGlobalFont } from './src/utils/globalFont';
 
 installGlobalFont();
 
+const LETTERS = ['S', 't', 'a', 's', 'h'];
+
 function SplashLogo() {
-  const logoScale = useRef(new Animated.Value(0.6)).current;
+  const logoScale = useRef(new Animated.Value(0.62)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoLift = useRef(new Animated.Value(12)).current;
-  const nameOpacity = useRef(new Animated.Value(0)).current;
-  const nameLift = useRef(new Animated.Value(10)).current;
+  const logoLift = useRef(new Animated.Value(14)).current;
+  const letters = useRef(LETTERS.map(() => new Animated.Value(0))).current;
   const lineScale = useRef(new Animated.Value(0)).current;
+  const lineOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.sequence([
+      // 1) Logo settles in with a soft spring + lift.
       Animated.parallel([
-        Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
-        Animated.timing(logoOpacity, { toValue: 1, duration: 380, useNativeDriver: true }),
-        Animated.timing(logoLift, { toValue: 0, duration: 420, useNativeDriver: true }),
+        Animated.spring(logoScale, { toValue: 1, tension: 38, friction: 7, useNativeDriver: true }),
+        Animated.timing(logoOpacity, { toValue: 1, duration: 460, useNativeDriver: true }),
+        Animated.spring(logoLift, { toValue: 0, tension: 40, friction: 8, useNativeDriver: true }),
       ]),
+      // 2) Wordmark reveals letter by letter.
+      Animated.stagger(
+        65,
+        letters.map((v) =>
+          Animated.spring(v, { toValue: 1, tension: 65, friction: 9, useNativeDriver: true }),
+        ),
+      ),
+      // 3) Accent underline grows from the centre.
       Animated.parallel([
-        Animated.timing(nameOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
-        Animated.timing(nameLift, { toValue: 0, duration: 360, useNativeDriver: true }),
-        Animated.spring(lineScale, { toValue: 1, tension: 60, friction: 9, useNativeDriver: true }),
+        Animated.timing(lineOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.spring(lineScale, { toValue: 1, tension: 45, friction: 10, useNativeDriver: true }),
       ]),
     ]).start();
-  }, [logoScale, logoOpacity, logoLift, nameOpacity, nameLift, lineScale]);
+  }, [logoScale, logoOpacity, logoLift, letters, lineScale, lineOpacity]);
 
   return (
     <View style={styles.center}>
       <Animated.View
         style={{ opacity: logoOpacity, transform: [{ scale: logoScale }, { translateY: logoLift }] }}
       >
-        <AppLogo size={92} />
+        <AppLogo size={100} />
       </Animated.View>
-      <Animated.Text
-        style={[styles.logoName, { opacity: nameOpacity, transform: [{ translateY: nameLift }] }]}
-      >
-        Stash
-      </Animated.Text>
+      <View style={styles.wordmark}>
+        {LETTERS.map((ch, i) => (
+          <Animated.Text
+            key={i}
+            style={[
+              styles.logoLetter,
+              {
+                opacity: letters[i],
+                transform: [{
+                  translateY: letters[i].interpolate({ inputRange: [0, 1], outputRange: [16, 0] }),
+                }],
+              },
+            ]}
+          >
+            {ch}
+          </Animated.Text>
+        ))}
+      </View>
       <Animated.View
-        style={[styles.logoLine, { transform: [{ scaleX: lineScale }] }]}
+        style={[styles.logoLine, { opacity: lineOpacity, transform: [{ scaleX: lineScale }] }]}
       />
     </View>
   );
@@ -137,13 +160,17 @@ const styles = StyleSheet.create({
   center: {
     flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.papel,
   },
-  logoName: {
-    fontSize: 26, color: Colors.tinta,
-    fontFamily: 'Lora_700Bold', letterSpacing: -0.5, marginTop: 18,
+  wordmark: {
+    flexDirection: 'row', alignItems: 'flex-end',
+    marginTop: 20, paddingHorizontal: 6,
+  },
+  logoLetter: {
+    fontSize: 30, color: Colors.tinta,
+    fontFamily: 'Lora_700Bold', includeFontPadding: false,
   },
   logoLine: {
-    width: 40, height: 3, borderRadius: 2,
-    backgroundColor: Colors.ambar, marginTop: 12,
+    width: 48, height: 3, borderRadius: 2,
+    backgroundColor: Colors.ambar, marginTop: 14,
   },
   errorTitle: { fontSize: 18, fontWeight: '700', color: '#ef4444', marginBottom: 8 },
   errorText: { fontSize: 14, color: '#374151', textAlign: 'center', paddingHorizontal: 32 },
